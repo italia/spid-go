@@ -1,11 +1,11 @@
-# Net::SPID
+# spid-go
 Golang package for SPID authentication
 
 [![Join the #spid-go channel](https://img.shields.io/badge/Slack%20channel-%23spid--go-blue.svg?logo=slack)](https://developersitalia.slack.com/messages/CCMJE9631)
 [![Get invited](https://slack.developers.italia.it/badge.svg)](https://slack.developers.italia.it/)
 [![SPID on forum.italia.it](https://img.shields.io/badge/Forum-SPID-blue.svg)](https://forum.italia.it/c/spid)
 
-This Perl module is aimed at implementing SPID Service Providers. [SPID](https://www.spid.gov.it/) is the Italian digital identity system, which enables citizens to access all public services with single set of credentials. This module provides a layer of abstraction over the SAML protocol by exposing just the subset required in order to implement SPID authentication in a web application.
+This Go package is aimed at implementing SPID Service Providers. [SPID](https://www.spid.gov.it/) is the Italian digital identity system, which enables citizens to access all public services with single set of credentials. This module provides a layer of abstraction over the SAML protocol by exposing just the subset required in order to implement SPID authentication in a web application.
 
 ## Features
 
