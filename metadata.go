@@ -4,8 +4,10 @@ import (
     "bytes"
     "encoding/xml"
     "io/ioutil"
+    "log"
     "os"
     "github.com/crewjam/saml"
+    "path/filepath"
     "text/template"
 )
  
@@ -37,6 +39,18 @@ func (sp *SP) LoadIDPFromXMLFile(path string) error {
 }
 
 func (sp *SP) LoadIDPMetadata(dir string) error {
+    files, err := filepath.Glob(dir + "/*.xml")
+    if (err != nil) {
+        log.Fatal(err)
+    }
+    
+    for _, file := range files {
+        err := sp.LoadIDPFromXMLFile(file)
+        if err != nil {
+            return err
+        }
+    }
+    
     return nil
 }
 
