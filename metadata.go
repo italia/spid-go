@@ -9,7 +9,7 @@ import (
     "text/template"
 )
  
-func (sp SP) LoadIDPFromXMLFile(path string) error {
+func (sp *SP) LoadIDPFromXMLFile(path string) error {
     // open XML file
     xmlFile, err := os.Open(path)
     if err != nil {
@@ -36,11 +36,11 @@ func (sp SP) LoadIDPFromXMLFile(path string) error {
     return nil
 }
 
-func (sp SP) LoadIDPMetadata(dir string) error {
+func (sp *SP) LoadIDPMetadata(dir string) error {
     return nil
 }
 
-func (sp SP) Metadata() string {
+func (sp *SP) Metadata() string {
     sp.LoadCert()
     
     const tmpl = `<?xml version="1.0"?> 

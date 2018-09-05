@@ -57,3 +57,4 @@ func (sp *SP) LoadCert() {
         sp.Cert = base64.StdEncoding.EncodeToString(cert.Raw)
     }
 }
+
