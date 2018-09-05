@@ -4,7 +4,7 @@ import (
     "fmt"
     "io"
     "net/http"
-	"github.com/italia/spid-go"
+    "github.com/italia/spid-go"
 )
 
 // This demo application shows how to use the spid package
@@ -41,15 +41,15 @@ func main() {
     }
     
     // Wire routes and endpoints of our example application
-	http.HandleFunc("/metadata", metadata)
-	
-	// Dance
-	fmt.Println("spid-go example application listening on http://localhost:8000")
-	http.ListenAndServe(":8000", nil)
+    http.HandleFunc("/metadata", metadata)
+    
+    // Dance
+    fmt.Println("spid-go example application listening on http://localhost:8000")
+    http.ListenAndServe(":8000", nil)
 }
 
 // This endpoint exposes our metadata
 func metadata(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/xml")
-	io.WriteString(w, sp.Metadata())
+    w.Header().Set("Content-Type", "application/xml")
+    io.WriteString(w, sp.Metadata())
 }

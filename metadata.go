@@ -13,27 +13,27 @@ func (sp SP) LoadIDPFromXMLFile(path string) error {
     // open XML file
     xmlFile, err := os.Open(path)
     if err != nil {
-		return err
-	}
-	defer xmlFile.Close()
-	
-	// read our opened xmlFile as a byte array.
+        return err
+    }
+    defer xmlFile.Close()
+    
+    // read our opened xmlFile as a byte array.
     byteValue, _ := ioutil.ReadAll(xmlFile)
     
     // parse the XML file
     var entity saml.EntityDescriptor
     err = xml.Unmarshal(byteValue, &entity)
     if err != nil {
-		return err
-	}
-	
-	// store the loaded IdP
-	if (sp.IdP == nil) {
-	    sp.IdP = make(map[string]*saml.EntityDescriptor)
-	}
-	sp.IdP[entity.EntityID] = &entity
-	
-	return nil
+        return err
+    }
+    
+    // store the loaded IdP
+    if (sp.IdP == nil) {
+        sp.IdP = make(map[string]*saml.EntityDescriptor)
+    }
+    sp.IdP[entity.EntityID] = &entity
+    
+    return nil
 }
 
 func (sp SP) LoadIDPMetadata(dir string) error {
