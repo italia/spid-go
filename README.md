@@ -1,4 +1,5 @@
 # spid-go
+
 Golang package for SPID authentication
 
 [![Join the #spid-go channel](https://img.shields.io/badge/Slack%20channel-%23spid--go-blue.svg?logo=slack)](https://developersitalia.slack.com/messages/CCMJE9631)
@@ -6,6 +7,8 @@ Golang package for SPID authentication
 [![SPID on forum.italia.it](https://img.shields.io/badge/Forum-SPID-blue.svg)](https://forum.italia.it/c/spid)
 
 This Go package is aimed at implementing SPID Service Providers. [SPID](https://www.spid.gov.it/) is the Italian digital identity system, which enables citizens to access all public services with single set of credentials. This module provides a layer of abstraction over the SAML protocol by exposing just the subset required in order to implement SPID authentication in a web application.
+
+> **This package is under development.** It is a port of [spid-perl](https://github.com/italia/spid-perl), so please, if you want to contribute make sure you follow that reference.
 
 ## Features
 
@@ -16,15 +19,15 @@ This Go package is aimed at implementing SPID Service Providers. [SPID](https://
 |parsing of AA XML metadata (2.2.4)||
 |SP XML metadata generation (1.3.2)|✓|
 |**AuthnRequest generation (1.2.2.1):**||
-|generation of AuthnRequest XML||
-|HTTP-Redirect binding||
+|generation of AuthnRequest XML|✓|
+|HTTP-Redirect binding|✓|
 |HTTP-POST binding||
-|`AssertionConsumerServiceURL` customization||
-|`AssertionConsumerServiceIndex` customization||
-|`AttributeConsumingServiceIndex` customization||
-|`AuthnContextClassRef` (SPID level) customization||
-|`RequestedAuthnContext/@Comparison` customization||
-|`RelayState` customization (1.2.2)||
+|`AssertionConsumerServiceURL` customization|✓|
+|`AssertionConsumerServiceIndex` customization|✓|
+|`AttributeConsumingServiceIndex` customization|✓|
+|`AuthnContextClassRef` (SPID level) customization|✓|
+|`RequestedAuthnContext/@Comparison` customization|✓|
+|`RelayState` customization (1.2.2)|✓|
 |**Response/Assertion parsing**||
 |verification of `Signature` value (if any)||
 |verification of `Signature` certificate (if any) against IdP/AA metadata||
@@ -101,5 +104,5 @@ This Go package is aimed at implementing SPID Service Providers. [SPID](https://
 
 ## Authors
 
-* [Alessandro Ranellucci](https://github.com/alexrj) (maintainer) - [Team per la Trasformazione Digitale](https://teamdigitale.governo.it/) - Presidenza del Consiglio dei Ministri
-    * [alranel@teamdigitale.governo.it](alranel@teamdigitale.governo.it)
+* [Alessandro Ranellucci](https://github.com/alranel) (maintainer) - [Team per la Trasformazione Digitale](https://teamdigitale.governo.it/) - Presidenza del Consiglio dei Ministri
+  * [alranel@teamdigitale.governo.it](alranel@teamdigitale.governo.it)
