@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/italia/spid-go"
+	"../spidsaml"
 )
 
 // This demo application shows how to use the spid package
@@ -14,29 +14,29 @@ import (
 // This is a stateless object representing your Service Provider. It does
 // not hold any information about active sessions, so you can safely store
 // it in a global variable.
-var sp *spid.SP
+var sp *spidsaml.SP
 
 // IMPORTANT:
 // These variables belong the session of each user. In an actual application
 // you would NOT store them as global variables, but you'd store them in the
 // user session backed by a cookie, using for example github.com/gorilla/sessions,
 // but for simplificy in this example application we are doing this way.
-var spidSession *spid.Session
+var spidSession *spidsaml.Session
 var authnReqID string
 
 func main() {
 	// Initialize our SPID object with information about this Service Provider
-	sp = &spid.SP{
+	sp = &spidsaml.SP{
 		EntityID: "https://www.foobar.it/",
 		KeyFile:  "sp.key",
 		CertFile: "sp.pem",
 		AssertionConsumerServices: []string{
 			"http://localhost:3000/spid-sso",
 		},
-		SingleLogoutServices: map[string]spid.SAMLBinding{
-			"http://localhost:3000/spid-slo": spid.HTTPRedirect,
+		SingleLogoutServices: map[string]spidsaml.SAMLBinding{
+			"http://localhost:3000/spid-slo": spidsaml.HTTPRedirect,
 		},
-		AttributeConsumingServices: []spid.AttributeConsumingService{
+		AttributeConsumingServices: []spidsaml.AttributeConsumingService{
 			{
 				ServiceName: "Service 1",
 				Attributes:  []string{"fiscalNumber", "name", "familyName", "dateOfBirth"},
@@ -109,7 +109,7 @@ func spidLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Craft the AuthnRequest.
-	authnreq := spid.NewAuthnRequest(sp, idp)
+	authnreq := spidsaml.NewAuthnRequest(sp, idp)
 	//authnreq.AcsURL = "http://localhost:3000/spid-sso"
 	authnreq.AcsIndex = 0
 	authnreq.AttrIndex = 0

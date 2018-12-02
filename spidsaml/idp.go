@@ -1,4 +1,4 @@
-package spid
+package spidsaml
 
 import (
 	"crypto/x509"
