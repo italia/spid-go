@@ -18,7 +18,7 @@ type protocolMessage struct {
 	SP *SP
 }
 
-// Message is the base class for all outgoing message
+// outMessage is the base class for all outgoing message
 type outMessage struct {
 	protocolMessage
 	IDP          *IDP

@@ -40,6 +40,16 @@ type SP struct {
 	_key                       *rsa.PrivateKey
 }
 
+// Session represents an active SPID session.
+type Session struct {
+	idpEntityID  string
+	nameID       string
+	SessionIndex string
+	AssertionXML string
+	Level        int
+	Attributes   map[string]string
+}
+
 // Cert returns the certificate of this Service Provider.
 func (sp *SP) Cert() *x509.Certificate {
 	if sp._cert == nil {
