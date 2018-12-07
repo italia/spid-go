@@ -19,16 +19,22 @@ import (
 
 // protocolMessage is the base class for all SAML messages
 type protocolMessage struct {
-	SP *SP
+	SP  *SP
+	IDP *IDP
 }
 
 // outMessage is the base class for all outgoing message
 type outMessage struct {
 	protocolMessage
-	IDP          *IDP
 	ID           string
 	issueInstant *time.Time
 	RelayState   string
+}
+
+type inMessage struct {
+	protocolMessage
+	XML []byte
+	doc *etree.Document
 }
 
 func generateMessageID() string {
@@ -176,4 +182,48 @@ func (msg *outMessage) signatureTemplate() []byte {
 	var rv bytes.Buffer
 	tmpl.Execute(&rv, data)
 	return rv.Bytes()
+}
+
+func (msg *inMessage) parseB64(payload string) error {
+	var err error
+	msg.XML, err = base64.StdEncoding.DecodeString(payload)
+	if err != nil {
+		return err
+	}
+
+	err = msg.initDoc()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (msg *inMessage) validate() error {
+	var err error
+	msg.IDP, err = msg.SP.GetIDP(msg.Issuer())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (msg *inMessage) initDoc() error {
+	msg.doc = etree.NewDocument()
+	return msg.doc.ReadFromBytes(msg.XML)
+}
+
+// Issuer returns the value of the <Issuer> element.
+func (msg *inMessage) Issuer() string {
+	return msg.doc.FindElement("/*/Issuer").Text()
+}
+
+// InResponseTo returns the value of the <InResponseTo> element.
+func (msg *inMessage) InResponseTo() string {
+	return msg.doc.Root().SelectAttrValue("InResponseTo", "")
+}
+
+// Destination returns the value of the <Destination> element.
+func (msg *inMessage) Destination() string {
+	return msg.doc.Root().SelectAttrValue("Destination", "")
 }

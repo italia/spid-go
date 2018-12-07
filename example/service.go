@@ -31,10 +31,10 @@ func main() {
 		KeyFile:  "sp.key",
 		CertFile: "sp.pem",
 		AssertionConsumerServices: []string{
-			"http://localhost:3000/spid-sso",
+			"http://localhost:8000/spid-sso",
 		},
 		SingleLogoutServices: map[string]spidsaml.SAMLBinding{
-			"http://localhost:3000/spid-slo": spidsaml.HTTPRedirect,
+			"http://localhost:8000/spid-slo": spidsaml.HTTPRedirect,
 		},
 		AttributeConsumingServices: []spidsaml.AttributeConsumingService{
 			{
@@ -56,6 +56,7 @@ func main() {
 	http.HandleFunc("/", index)
 	http.HandleFunc("/metadata", metadata)
 	http.HandleFunc("/spid-login", spidLogin)
+	http.HandleFunc("/spid-sso", spidSSO)
 
 	// Dance
 	fmt.Println("spid-go example application listening on http://localhost:8000")
@@ -88,7 +89,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 		t := template.Must(template.New("index").Parse(tmplLayout))
 		t.Execute(w, template.HTML(button))
 	} else {
-
+		fmt.Fprintf(w, spidSession.Attributes["name"])
 	}
 }
 
@@ -109,7 +110,7 @@ func spidLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Craft the AuthnRequest.
-	authnreq := spidsaml.NewAuthnRequest(sp, idp)
+	authnreq := sp.NewAuthnRequest(idp)
 	//authnreq.AcsURL = "http://localhost:3000/spid-sso"
 	authnreq.AcsIndex = 0
 	authnreq.AttrIndex = 0
@@ -125,4 +126,55 @@ func spidLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Redirect user to the IdP using its HTTP-Redirect binding.
 	http.Redirect(w, r, authnreq.RedirectURL(), http.StatusSeeOther)
+}
+
+// This endpoint exposes an AssertionConsumerService for our Service Provider.
+// During SSO, the Identity Provider will redirect user to this URL POSTing
+// the resulting assertion.
+func spidSSO(w http.ResponseWriter, r *http.Request) {
+	// Parse and verify the incoming assertion. This may throw exceptions so we
+	// enclose it in an eval {} block.
+	r.ParseForm()
+	response, err := sp.ParseResponseB64(
+		r.Form.Get("SAMLResponse"),
+		authnReqID, // Match the ID of our authentication request for increased security.
+	)
+
+	// Clear the ID of the outgoing Authnreq, regardless of the result.
+	authnReqID = ""
+
+	// TODO: better error handling:
+	// - authentication failure
+	// - authentication cancelled by user
+	// - temporary server error
+	// - unavailable SPID level
+
+	// In case of SSO failure, display an error page.
+	if err != nil {
+		fmt.Printf("Bad Assertion received: %s\n", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Log response as required by the SPID rules.
+	// Hint: log it in a way that does not mangle whitespace preventing signature from
+	// being verified at a later time
+	fmt.Printf("SPID Response: %s\n", response.XML)
+
+	if response.Success() {
+		// Login successful! Initialize our application session and store
+		// the SPID information for later retrieval.
+		// TODO: this should be stored in a database instead of the current Dancer
+		// session, and it should be indexed by SPID SessionID so that we can delete
+		// it when we get a LogoutRequest from an IdP.
+		spidSession = response.Session()
+
+		// TODO: handle SPID level upgrade:
+		// - does session ID remain the same? better assume it changes
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	} else {
+		fmt.Fprintf(w, "Authentication Failed: %s (%s)",
+			response.StatusMessage(), response.StatusCode2())
+	}
 }

@@ -36,18 +36,18 @@ This Go package is aimed at implementing SPID Service Providers. [SPID](https://
 |verification of `SubjectConfirmationData/@Recipient`||
 |verification of `SubjectConfirmationData/@NotOnOrAfter`||
 |verification of `SubjectConfirmationData/@InResponseTo`||
-|verification of `Issuer`||
+|verification of `Issuer`|✓|
 |verification of `Assertion/Issuer`||
-|verification of `Destination`||
+|verification of `Destination`|✓|
 |verification of `Conditions/@NotBefore`||
 |verification of `Conditions/@NotOnOrAfter`||
 |verification of `Audience`||
 |parsing of Response with no `Assertion` (authentication/query failure)||
 |parsing of failure `StatusCode` (Requester/Responder)||
 |**Response/Assertion parsing for SSO (1.2.1, 1.2.2.2, 1.3.1):**||
-|parsing of `NameID`||
-|parsing of `AuthnContextClassRef` (SPID level)||
-|parsing of attributes||
+|parsing of `NameID`|✓|
+|parsing of `AuthnContextClassRef` (SPID level)|✓|
+|parsing of attributes|✓|
 |**Response/Assertion parsing for attribute query (2.2.2.2, 2.3.1):**||
 |parsing of attributes| |
 |**LogoutRequest generation (for SP-initiated logout):**||

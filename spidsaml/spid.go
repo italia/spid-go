@@ -41,10 +41,10 @@ type SP struct {
 
 // Session represents an active SPID session.
 type Session struct {
-	idpEntityID  string
-	nameID       string
+	IDPEntityID  string
+	NameID       string
 	SessionIndex string
-	AssertionXML string
+	AssertionXML []byte
 	Level        int
 	Attributes   map[string]string
 }

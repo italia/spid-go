@@ -5,9 +5,9 @@ import (
 	"text/template"
 )
 
-// OutAuthnRequest defines an outgoing SPID/SAML AuthnRequest.
+// AuthnRequest defines an outgoing SPID/SAML AuthnRequest.
 // Do not instantiate it directly but use idp.NewAuthnRequest() instead.
-type OutAuthnRequest struct {
+type AuthnRequest struct {
 	outMessage
 	AcsURL     string
 	AcsIndex   int
@@ -19,8 +19,8 @@ type OutAuthnRequest struct {
 // NewAuthnRequest generates an AuthnRequest addressed to this Identity Provider.
 // Note that this method does not perform any network call, it just initializes
 // an object.
-func NewAuthnRequest(sp *SP, idp *IDP) *OutAuthnRequest {
-	req := new(OutAuthnRequest)
+func (sp *SP) NewAuthnRequest(idp *IDP) *AuthnRequest {
+	req := new(AuthnRequest)
 	req.SP = sp
 	req.IDP = idp
 	req.ID = generateMessageID()
@@ -32,14 +32,14 @@ func NewAuthnRequest(sp *SP, idp *IDP) *OutAuthnRequest {
 }
 
 // XML generates the XML representation of this AuthnRequest
-func (authnreq *OutAuthnRequest) XML(binding SAMLBinding) []byte {
+func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 	var signatureTemplate string
 	if binding == HTTPPost {
 		signatureTemplate = string(authnreq.signatureTemplate())
 	}
 
 	data := struct {
-		*OutAuthnRequest
+		*AuthnRequest
 		IssueInstant      string
 		Destination       string
 		EntityID          string
@@ -102,7 +102,7 @@ func (authnreq *OutAuthnRequest) XML(binding SAMLBinding) []byte {
 // RedirectURL returns the full URL of the Identity Provider where user should be
 // redirected in order to initiate their Single Sign-On. In SAML words, this
 // implements the HTTP-Redirect binding.
-func (authnreq *OutAuthnRequest) RedirectURL() string {
+func (authnreq *AuthnRequest) RedirectURL() string {
 	return authnreq.outMessage.RedirectURL(
 		authnreq.IDP.SSOURLs[HTTPRedirect],
 		authnreq.XML(HTTPRedirect),
@@ -113,7 +113,7 @@ func (authnreq *OutAuthnRequest) RedirectURL() string {
 // PostForm returns an HTML page with a JavaScript auto-post command that submits
 // the request to the Identity Provider in order to initiate their Single Sign-On.
 // In SAML words, this implements the HTTP-POST binding.
-func (authnreq *OutAuthnRequest) PostForm() []byte {
+func (authnreq *AuthnRequest) PostForm() []byte {
 	return authnreq.outMessage.PostForm(
 		authnreq.IDP.SSOURLs[HTTPPost],
 		authnreq.XML(HTTPPost),
