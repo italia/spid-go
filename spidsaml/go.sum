@@ -1,2 +1,6 @@
 github.com/beevik/etree v1.0.1 h1:lWzdj5v/Pj1X360EV7bUudox5SRipy4qZLjY0rhb0ck=
 github.com/beevik/etree v1.0.1/go.mod h1:r8Aw8JqVegEf0w2fDnATrX9VpkMcyFeM0FhwO62wh+A=
+github.com/crewjam/errset v0.0.0-20160219153700-f78d65de925c h1:dCJ9oZ0VgnzJHR5BjkSrwkXA1USu483qlxBd0u29P8s=
+github.com/crewjam/errset v0.0.0-20160219153700-f78d65de925c/go.mod h1:XhiWL7J86xoqJ8+x2OA+AM2l9skQP2DZ0UOXQYVg7uI=
+github.com/crewjam/go-xmlsec v0.0.0-20170116132012-1aa2f9374afa h1:P3H7u0mfn9zEniDEKN50Yos1m60AM2PNOcyrInUjRFM=
+github.com/crewjam/go-xmlsec v0.0.0-20170116132012-1aa2f9374afa/go.mod h1:M9eHnKpImgRwzOFdlFQnbgJRqFwW/eX1cKAVobv03uE=

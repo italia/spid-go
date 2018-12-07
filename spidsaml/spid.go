@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"io/ioutil"
-	"os"
 	"text/template"
 )
 
@@ -53,20 +52,15 @@ type Session struct {
 // Cert returns the certificate of this Service Provider.
 func (sp *SP) Cert() *x509.Certificate {
 	if sp._cert == nil {
-		certFile, err := os.Open(sp.CertFile)
-		if err != nil {
-			panic(err)
-		}
-		defer certFile.Close()
-
-		// read our opened certFile as a byte array
-		byteValue, _ := ioutil.ReadAll(certFile)
+		// read file as a byte array
+		byteValue, _ := ioutil.ReadFile(sp.CertFile)
 
 		block, _ := pem.Decode(byteValue)
 		if block == nil || block.Type != "CERTIFICATE" {
 			panic("failed to parse certificate PEM")
 		}
 
+		var err error
 		sp._cert, err = x509.ParseCertificate(block.Bytes)
 		if err != nil {
 			panic(err)
@@ -78,26 +72,31 @@ func (sp *SP) Cert() *x509.Certificate {
 // Key returns the private key of this Service Provider
 func (sp *SP) Key() *rsa.PrivateKey {
 	if sp._key == nil {
-		keyFile, err := os.Open(sp.KeyFile)
-		if err != nil {
-			panic(err)
-		}
-		defer keyFile.Close()
-
-		// read our opened certFile as a byte array
-		byteValue, _ := ioutil.ReadAll(keyFile)
+		// read file as a byte array
+		byteValue, _ := ioutil.ReadFile(sp.KeyFile)
 
 		block, _ := pem.Decode(byteValue)
 		if block == nil || block.Type != "RSA PRIVATE KEY" {
 			panic("failed to parse private key from PEM file")
 		}
 
+		var err error
 		sp._key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
 			panic(err)
 		}
 	}
 	return sp._key
+}
+
+// KeyPEM returns the private key of this Service Provider in PEM format
+func (sp *SP) KeyPEM() []byte {
+	key := sp.Key()
+	var block = &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+	return pem.EncodeToMemory(block)
 }
 
 // GetIDP returns an IDP object representing the Identity Provider matching the given entityID.

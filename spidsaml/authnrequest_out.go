@@ -32,17 +32,24 @@ func NewAuthnRequest(sp *SP, idp *IDP) *OutAuthnRequest {
 }
 
 // XML generates the XML representation of this AuthnRequest
-func (authnreq *OutAuthnRequest) XML(binding SAMLBinding) string {
+func (authnreq *OutAuthnRequest) XML(binding SAMLBinding) []byte {
+	var signatureTemplate string
+	if binding == HTTPPost {
+		signatureTemplate = string(authnreq.signatureTemplate())
+	}
+
 	data := struct {
 		*OutAuthnRequest
-		IssueInstant string
-		Destination  string
-		EntityID     string
+		IssueInstant      string
+		Destination       string
+		EntityID          string
+		SignatureTemplate string
 	}{
 		authnreq,
 		authnreq.IssueInstantString(),
 		authnreq.IDP.EntityID,
 		authnreq.SP.EntityID,
+		signatureTemplate,
 	}
 
 	// According to SAML rules, Destination should be set to self.GetIdPSSOURL(binding)
@@ -75,6 +82,8 @@ func (authnreq *OutAuthnRequest) XML(binding SAMLBinding) string {
         {{ .EntityID }}
 	</saml:Issuer>
 
+	{{ .SignatureTemplate }}
+
     <samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient" />
     <samlp:RequestedAuthnContext Comparison="{{ .Comparison }}">
         <saml:AuthnContextClassRef>
@@ -83,13 +92,11 @@ func (authnreq *OutAuthnRequest) XML(binding SAMLBinding) string {
     </samlp:RequestedAuthnContext>
 </samlp:AuthnRequest>
 `
-	// TODO: add signature between Issuer and NameIDPolicy if binding is POST
 
 	t := template.Must(template.New("metadata").Parse(tmpl))
 	var metadata bytes.Buffer
 	t.Execute(&metadata, data)
-
-	return metadata.String()
+	return metadata.Bytes()
 }
 
 // RedirectURL returns the full URL of the Identity Provider where user should be
@@ -99,6 +106,17 @@ func (authnreq *OutAuthnRequest) RedirectURL() string {
 	return authnreq.outMessage.RedirectURL(
 		authnreq.IDP.SSOURLs[HTTPRedirect],
 		authnreq.XML(HTTPRedirect),
+		"SAMLRequest",
+	)
+}
+
+// PostForm returns an HTML page with a JavaScript auto-post command that submits
+// the request to the Identity Provider in order to initiate their Single Sign-On.
+// In SAML words, this implements the HTTP-POST binding.
+func (authnreq *OutAuthnRequest) PostForm() []byte {
+	return authnreq.outMessage.PostForm(
+		authnreq.IDP.SSOURLs[HTTPPost],
+		authnreq.XML(HTTPPost),
 		"SAMLRequest",
 	)
 }

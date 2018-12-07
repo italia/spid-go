@@ -21,7 +21,7 @@ This Go package is aimed at implementing SPID Service Providers. [SPID](https://
 |**AuthnRequest generation (1.2.2.1):**||
 |generation of AuthnRequest XML|✓|
 |HTTP-Redirect binding|✓|
-|HTTP-POST binding||
+|HTTP-POST binding|✓|
 |`AssertionConsumerServiceURL` customization|✓|
 |`AssertionConsumerServiceIndex` customization|✓|
 |`AttributeConsumingServiceIndex` customization|✓|

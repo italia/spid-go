@@ -120,8 +120,8 @@ func spidLogin(w http.ResponseWriter, r *http.Request) {
 	authnReqID = authnreq.ID
 
 	// Uncomment the following lines to use the HTTP-POST binding instead of HTTP-Redirect:
-	///w.Write(authnreq.PostForm())
-	///return
+	//w.Write(authnreq.PostForm())
+	//return
 
 	// Redirect user to the IdP using its HTTP-Redirect binding.
 	http.Redirect(w, r, authnreq.RedirectURL(), http.StatusSeeOther)
