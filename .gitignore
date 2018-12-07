@@ -12,3 +12,5 @@
 *.out
 
 example/example
+
+.vscode
