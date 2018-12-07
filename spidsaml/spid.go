@@ -7,9 +7,9 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"html/template"
 	"io/ioutil"
 	"os"
+	"text/template"
 )
 
 // AttributeConsumingService defines, well, an AttributeConsumingService.
