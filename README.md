@@ -8,7 +8,23 @@ Golang package for SPID authentication
 
 This Go package is aimed at implementing SPID Service Providers. [SPID](https://www.spid.gov.it/) is the Italian digital identity system, which enables citizens to access all public services with single set of credentials. This module provides a layer of abstraction over the SAML protocol by exposing just the subset required in order to implement SPID authentication in a web application.
 
-> **This package is under development.** It is a port of [spid-perl](https://github.com/italia/spid-perl), so please, if you want to contribute make sure you follow that reference.
+## Getting Started
+
+The [example/](example/) directory contains a demo web application. Just follow these steps in order to test it quickly:
+
+1. Install the [go-xmlsec](https://github.com/crewjam/go-xmlsec) dependency. While `go get` should get everything else you need, go-xmlsec depends on a C library so you should install it manually. It's quick. See its [README](https://github.com/crewjam/go-xmlsec) for details. (You might need to run `export CGO_CFLAGS_ALLOW=".*"` first to make it compile correctly.)
+
+2. Run the demo application:
+   ```bash
+   cd example/
+   go run service.go
+   ```
+
+3. Connect to [http://localhost:8000/metadata](http://localhost:8000/metadata) and grab the metadata of the demo Service Provider.
+
+4. Configure [spid-testenv2](https://github.com/italia/spid-testenv2) and load the above Service Provider metadata into it.
+
+5. Launch [http://localhost:8000](http://localhost:8000) and enjoy your SPID demo.
 
 ## Features
 
