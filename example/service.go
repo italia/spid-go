@@ -10,7 +10,7 @@ import (
 	"../spidsaml"
 )
 
-// This demo application shows how to use the spid package
+// This demo application shows how to use the spidsaml package
 
 // This is a stateless object representing your Service Provider. It does
 // not hold any information about active sessions, so you can safely store
@@ -23,7 +23,7 @@ var sp *spidsaml.SP
 // user session backed by a cookie, using for example github.com/gorilla/sessions,
 // but for simplificy in this example application we are doing this way.
 var spidSession *spidsaml.Session
-var authnReqID string
+var authnReqID, logoutReqID string
 
 func main() {
 	// Initialize our SPID object with information about this Service Provider
@@ -58,6 +58,8 @@ func main() {
 	http.HandleFunc("/metadata", metadata)
 	http.HandleFunc("/spid-login", spidLogin)
 	http.HandleFunc("/spid-sso", spidSSO)
+	http.HandleFunc("/logout", spidLogout)
+	http.HandleFunc("/spid-slo", spidSLO)
 
 	// Dance
 	fmt.Println("spid-go example application listening on http://localhost:8000")
@@ -159,8 +161,8 @@ func spidSSO(w http.ResponseWriter, r *http.Request) {
 	// Parse and verify the incoming assertion. This may throw exceptions so we
 	// enclose it in an eval {} block.
 	r.ParseForm()
-	response, err := sp.ParseResponseB64(
-		r.Form.Get("SAMLResponse"),
+	response, err := sp.ParseResponse(
+		r,
 		authnReqID, // Match the ID of our authentication request for increased security.
 	)
 
@@ -200,5 +202,109 @@ func spidSSO(w http.ResponseWriter, r *http.Request) {
 	} else {
 		fmt.Fprintf(w, "Authentication Failed: %s (%s)",
 			response.StatusMessage(), response.StatusCode2())
+	}
+}
+
+// This endpoint initiates logout.
+func spidLogout(w http.ResponseWriter, r *http.Request) {
+	// If we don't have an open SPID session, do nothing.
+	if spidSession == nil {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	// Craft the LogoutRequest.
+	logoutreq, err := sp.NewLogoutRequest(spidSession)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Save the ID of the LogoutRequest so that we can check it in the response
+	// in order to prevent forgery.
+	logoutReqID = logoutreq.ID
+
+	// Uncomment the following line to use the HTTP-POST binding instead of HTTP-Redirect:
+	//w.Write(logoutreq.PostForm())
+	//return
+
+	// Redirect user to the Identity Provider for logout.
+	http.Redirect(w, r, logoutreq.RedirectURL(), http.StatusSeeOther)
+}
+
+// This endpoint exposes a SingleLogoutService for our Service Provider, using
+// a HTTP-POST or HTTP-Redirect binding (this package does not support SOAP).
+// Identity Providers can direct both LogoutRequest and LogoutResponse messages
+// to this endpoint.
+func spidSLO(w http.ResponseWriter, r *http.Request) {
+	if spidSession == nil {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	r.ParseForm()
+	if r.Form.Get("SAMLResponse") != "" && logoutReqID != "" {
+		// This is the response to a SP-initiated logout.
+
+		// Parse the response and catch validation errors.
+		_, err := sp.ParseLogoutResponse(
+			r,
+			logoutReqID, // Match the ID of our logout request for increased security.
+		)
+
+		// In case of SLO failure, display an error page.
+		if err != nil {
+			fmt.Printf("Bad LogoutResponse received: %s\n", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Logout was successful! Clear the local session.
+		logoutReqID = ""
+		spidSession = nil
+		fmt.Println("Session successfully destroyed.")
+
+		// TODO: handle partial logout. Log? Show message to user?
+		// if (logoutres.Status() == logoutres.Partial) { ... }
+
+		// Redirect user back to main page.
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	} else if r.Form.Get("SAMLRequest") != "" {
+		// This is a LogoutRequest (IdP-initiated logout).
+
+		logoutreq, err := sp.ParseLogoutRequest(r)
+
+		if err != nil {
+			fmt.Printf("Bad LogoutRequest received: %s\n", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Now we should retrieve the local session corresponding to the SPID
+		// session logoutreq.SessionIndex(). However, since we are implementing a HTTP-POST
+		// binding, this HTTP request comes from the user agent so the current user
+		// session is automatically the right one. This simplifies things a lot as
+		// retrieving another session by SPID session ID is tricky without a more
+		// complex architecture.
+		status := spidsaml.SuccessLogout
+		if logoutreq.SessionIndex() == spidSession.SessionIndex {
+			spidSession = nil
+		} else {
+			status = spidsaml.PartialLogout
+			fmt.Printf("SAML LogoutRequest session (%s) does not match current SPID session (%s)\n",
+				logoutreq.SessionIndex(), spidSession.SessionIndex)
+		}
+
+		// Craft a LogoutResponse and send it back to the Identity Provider.
+		logoutres, err := sp.NewLogoutResponse(logoutreq, status)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Redirect user to the Identity Provider for logout.
+		http.Redirect(w, r, logoutres.RedirectURL(), http.StatusSeeOther)
+	} else {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
 	}
 }

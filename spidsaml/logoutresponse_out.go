@@ -1,0 +1,120 @@
+package spidsaml
+
+import (
+	"bytes"
+	"text/template"
+)
+
+// LogoutResponseOut defines an outgoing SPID/SAML LogoutResponse.
+// You need to craft such a response in case you received a LogoutRequest
+// from the Identity Provider, thus during an IdP-initiated logout.
+// Do not instantiate it directly but use sp.NewLogoutResponse() instead.
+type LogoutResponseOut struct {
+	outMessage
+	InResponseTo string
+}
+
+// LogoutStatus represent the possible result statuses of Single Logout.
+type LogoutStatus string
+
+// LogoutStatus represent the possible result statuses of Single Logout.
+const (
+	SuccessLogout LogoutStatus = "success"
+	PartialLogout LogoutStatus = "partial"
+)
+
+// NewLogoutResponse generates a LogoutRequest addressed to the Identity Provider.
+// Note that this method does not perform any network call, it just initializes
+// an object.
+func (sp *SP) NewLogoutResponse(logoutreq *LogoutRequestIn, status LogoutStatus) (*LogoutResponseOut, error) {
+	res := new(LogoutResponseOut)
+	res.SP = sp
+	var err error
+	res.IDP = logoutreq.IDP
+	if err != nil {
+		return nil, err
+	}
+	res.ID = generateMessageID()
+	res.InResponseTo = logoutreq.ID()
+	return res, nil
+}
+
+// XML generates the XML representation of this LogoutResponseOut
+func (logoutres *LogoutResponseOut) XML(binding SAMLBinding) []byte {
+	var signatureTemplate string
+	if binding == HTTPPost {
+		signatureTemplate = string(logoutres.signatureTemplate())
+	}
+
+	data := struct {
+		*LogoutResponseOut
+		IssueInstant      string
+		SignatureTemplate string
+	}{
+		logoutres,
+		logoutres.IssueInstantString(),
+		signatureTemplate,
+	}
+
+	// According to SAML rules, Destination should be set to logoutreq.IDP.SLOReqURLs[binding]
+	// but SPID rules want the entityID instead.
+
+	// TODO: what should we send in case of .Status == "failed"?
+	// TODO: is it correct to send PartialLogout in case of .Status == "partial"?
+
+	const tmpl = `<?xml version="1.0"?> 
+	<samlp:LogoutResponse xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+		xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+		ID="{{ .ID }}"
+		Version="2.0"
+		IssueInstant="{{ .IssueInstant }}"
+		Destination="{{ .IDP.EntityID }}"
+		InResponseTo="{{ .InResponseTo }}">
+	
+	<saml:Issuer
+		NameQualifier="{{ .SP.EntityID }}"
+		Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">
+		{{ .SP.EntityID }}
+	</saml:Issuer>
+
+	{{ .SignatureTemplate }}
+
+	<samlp:Status>
+		{{ if eq .Status "success" }}
+			<samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success" />
+		{{ else if eq .Status "partial" }}
+			<samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Requester">
+				<samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:PartialLogout" />
+			</samlp:StatusCode>
+		{{ end }}
+	</samlp:Status>
+</samlp:LogoutRequest>
+`
+
+	t := template.Must(template.New("req").Parse(tmpl))
+	var metadata bytes.Buffer
+	t.Execute(&metadata, data)
+	return metadata.Bytes()
+}
+
+// RedirectURL returns the full URL of the Identity Provider where user should be
+// redirected in order to continue their Single Logout. In SAML words, this
+// implements the HTTP-Redirect binding.
+func (logoutres *LogoutResponseOut) RedirectURL() string {
+	return logoutres.outMessage.RedirectURL(
+		logoutres.IDP.SLOResURLs[HTTPRedirect],
+		logoutres.XML(HTTPRedirect),
+		"SAMLResponse",
+	)
+}
+
+// PostForm returns an HTML page with a JavaScript auto-post command that submits
+// the request to the Identity Provider in order to complete their Single Logout.
+// In SAML words, this implements the HTTP-POST binding.
+func (logoutres *LogoutResponseOut) PostForm() []byte {
+	return logoutres.outMessage.PostForm(
+		logoutres.IDP.SLOResURLs[HTTPPost],
+		logoutres.XML(HTTPPost),
+		"SAMLResponse",
+	)
+}

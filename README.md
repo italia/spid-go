@@ -51,28 +51,28 @@ This Go package is aimed at implementing SPID Service Providers. [SPID](https://
 |**Response/Assertion parsing for attribute query (2.2.2.2, 2.3.1):**||
 |parsing of attributes| |
 |**LogoutRequest generation (for SP-initiated logout):**||
-|generation of LogoutRequest XML||
-|HTTP-Redirect binding||
-|HTTP-POST binding||
+|generation of LogoutRequest XML|✓|
+|HTTP-Redirect binding|✓|
+|HTTP-POST binding|✓|
 |**LogoutResponse parsing (for SP-initiated logout):**||
-|parsing of LogoutResponse XML||
-|verification of `Response/Signature` value (if any)||
-|verification of `Response/Signature` certificate (if any) against IdP metadata||
-|verification of `Issuer`||
-|verification of `Destination`||
-|PartialLogout detection||
+|parsing of LogoutResponse XML|✓|
+|verification of `Response/Signature` value (if any)|✓|
+|verification of `Response/Signature` certificate (if any) against IdP metadata|✓|
+|verification of `Issuer`|✓|
+|verification of `Destination`|✓|
+|PartialLogout detection|✓|
 |**LogoutRequest parsing (for third-party-initiated logout):**||
-|parsing of LogoutRequest XML||
-|verification of `Response/Signature` value (if any)||
-|verification of `Response/Signature` certificate (if any) against IdP metadata||
-|verification of `Issuer`||
-|verification of `Destination`||
-|parsing of `NameID`||
+|parsing of LogoutRequest XML|✓|
+|verification of `Response/Signature` value (if any)|✓|
+|verification of `Response/Signature` certificate (if any) against IdP metadata|✓|
+|verification of `Issuer`|✓|
+|verification of `Destination`|✓|
+|parsing of `NameID`|✓|
 |**LogoutResponse generation (for third-party-initiated logout):**||
-|generation of LogoutResponse XML||
-|HTTP-Redirect binding||
-|HTTP-POST binding||
-|PartialLogout customization||
+|generation of LogoutResponse XML|✓|
+|HTTP-Redirect binding|✓|
+|HTTP-POST binding|✓|
+|PartialLogout customization|✓|
 |**AttributeQuery generation (2.2.2.1):**||
 |generation of AttributeQuery XML| |
 |SOAP binding (client)| |

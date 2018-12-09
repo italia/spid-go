@@ -7,9 +7,14 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"net/url"
+	"strings"
 	"text/template"
 	"time"
 
@@ -33,8 +38,9 @@ type outMessage struct {
 
 type inMessage struct {
 	protocolMessage
-	XML []byte
-	doc *etree.Document
+	XML        []byte
+	doc        *etree.Document
+	RelayState string
 }
 
 func generateMessageID() string {
@@ -184,19 +190,40 @@ func (msg *outMessage) signatureTemplate() []byte {
 	return rv.Bytes()
 }
 
-func (msg *inMessage) parseB64(payload string) error {
-	var err error
-	msg.XML, err = base64.StdEncoding.DecodeString(payload)
-	if err != nil {
-		return err
+func (msg *inMessage) parse(r *http.Request, param string) error {
+	if r.Method == "POST" {
+		r.ParseForm()
+		var err error
+		msg.XML, err = base64.StdEncoding.DecodeString(r.Form.Get(param))
+		if err != nil {
+			return err
+		}
+
+		msg.RelayState = r.Form.Get("RelayState")
+	} else { // GET
+		samlEncoding := r.URL.Query().Get("SAMLEncoding")
+		if samlEncoding != "" && samlEncoding != "urn:oasis:names:tc:SAML:2.0:bindings:URL-Encoding:DEFLATE" {
+			return errors.New("Invalid SAMLEncoding")
+		}
+
+		payload, err := base64.StdEncoding.DecodeString(r.URL.Query().Get(param))
+		if err != nil {
+			return err
+		}
+
+		b := bytes.NewReader(payload)
+		r2 := flate.NewReader(b)
+		defer r2.Close()
+		msg.XML, err = ioutil.ReadAll(r2)
+		if err != nil {
+			return err
+		}
+
+		msg.RelayState = r.URL.Query().Get("RelayState")
 	}
 
-	err = msg.initDoc()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	msg.doc = etree.NewDocument()
+	return msg.doc.ReadFromBytes(msg.XML)
 }
 
 func (msg *inMessage) validate() error {
@@ -205,12 +232,77 @@ func (msg *inMessage) validate() error {
 	if err != nil {
 		return err
 	}
+
+	// TODO: validate IssueInstant
+
 	return nil
 }
 
-func (msg *inMessage) initDoc() error {
-	msg.doc = etree.NewDocument()
-	return msg.doc.ReadFromBytes(msg.XML)
+func (msg *inMessage) validateSignature(r *http.Request, param string) error {
+	if r.Method == "POST" {
+		err := xmlsec.Verify(msg.IDP.CertPEM(), msg.XML, xmlsec.SignatureOptions{
+			XMLID: []xmlsec.XMLIDOption{
+				{
+					ElementName:      msg.doc.Root().Tag,
+					ElementNamespace: "",
+					AttributeName:    "ID",
+				},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("%s signature verification failed: %s",
+				msg.doc.Root().Tag, err.Error())
+		}
+	} else if r.Method == "GET" { // GET
+		// In order to verify the signature we need to concatenate arguments
+		// according to a predefined order (the request URI might be ordered
+		// in a different way)
+		query := r.URL.Query()
+		var params []string
+		for _, key := range []string{param, "RelayState", "SigAlg"} {
+			if _, exists := query[key]; exists {
+				params = append(params, fmt.Sprintf("%s=%s",
+					key, url.QueryEscape(query.Get(key))))
+			}
+		}
+
+		// Encode the payload
+		payload := []byte(strings.Join(params, "&"))
+
+		// Decode the signature from Base64
+		sig, err := base64.StdEncoding.DecodeString(query.Get("Signature"))
+		if err != nil {
+			return err
+		}
+
+		// Compute the hash of the payload according to the declared SigAlg
+		var h []byte
+		var hashAlg crypto.Hash
+		if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" {
+			h2 := sha256.Sum256(payload)
+			h = h2[:]
+			hashAlg = crypto.SHA256
+		} else if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha384" {
+			h2 := sha512.Sum384(payload)
+			h = h2[:]
+			hashAlg = crypto.SHA384
+		} else if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512" {
+			h2 := sha512.Sum512(payload)
+			h = h2[:]
+			hashAlg = crypto.SHA512
+		} else {
+			return fmt.Errorf("Unknown SigAlg: %s", query.Get("SigAlg"))
+		}
+
+		// Verify the signature
+		return rsa.VerifyPKCS1v15(msg.IDP.Cert.PublicKey.(*rsa.PublicKey), hashAlg, h, sig)
+	}
+	return fmt.Errorf("Invalid HTTP method: %s", r.Method)
+}
+
+// ID returns the message ID.
+func (msg *inMessage) ID() string {
+	return msg.doc.Root().SelectAttrValue("ID", "")
 }
 
 // Issuer returns the value of the <Issuer> element.

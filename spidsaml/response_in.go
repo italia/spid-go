@@ -2,6 +2,7 @@ package spidsaml
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -13,16 +14,15 @@ type Response struct {
 	inMessage
 }
 
-// ParseResponseB64 accepts a Base64-encoded XML payload and parses it as a
-// Response/Assertion.
+// ParseResponse parses a Response/Assertion.
 // Validation is performed (see the documentation for the Response::validate()
 // method), so this method may return an error.
 // A second argument can be supplied, containing the C<ID> of the request message;
 // in this case validation will also check the InResponseTo attribute.
-func (sp *SP) ParseResponseB64(payload string, inResponseTo string) (*Response, error) {
+func (sp *SP) ParseResponse(r *http.Request, inResponseTo string) (*Response, error) {
 	response := &Response{}
 	response.SP = sp
-	err := response.parseB64(payload)
+	err := response.parse(r, "SAMLResponse")
 	if err != nil {
 		return nil, err
 	}
@@ -42,8 +42,6 @@ func (response *Response) validate(inResponseTo string) error {
 		return err
 	}
 
-	// TODO: validate IssueInstant
-
 	if inResponseTo != response.InResponseTo() {
 		return fmt.Errorf("Invalid InResponseTo: '%s' (expected: '%s')",
 			response.InResponseTo(), inResponseTo)
@@ -52,7 +50,7 @@ func (response *Response) validate(inResponseTo string) error {
 	// As of current SPID spec, Destination might be populated with the entityID
 	// instead of the ACS URL
 	destination := response.Destination()
-	knownDestination := false
+	knownDestination := destination == response.SP.EntityID
 	for _, acs := range response.SP.AssertionConsumerServices {
 		if acs == destination {
 			knownDestination = true
@@ -165,92 +163,94 @@ func (response *Response) validate(inResponseTo string) error {
 	return nil
 }
 
-// StatusCode returns the value of the <StatusCode> element.
-func (msg *inMessage) Success() bool {
-	return msg.StatusCode() == "urn:oasis:names:tc:SAML:2.0:status:Success"
+// Success returns true if authentication succeeded (and thus we got an assertion
+// from the Identity Provider). In case of failure, you can call the StatusCode()
+// method for more details.
+func (response *Response) Success() bool {
+	return response.StatusCode() == "urn:oasis:names:tc:SAML:2.0:status:Success"
 }
 
 // Session returns a Session object populated with useful information from this
 // Response/Assertion. You might want to store this object along with the user
 // session of your application, so that you can use it for generating the
 // LoginRequest
-func (msg *inMessage) Session() *Session {
+func (response *Response) Session() *Session {
 	return &Session{
-		IDPEntityID:  msg.IDP.EntityID,
-		NameID:       msg.NameID(),
-		SessionIndex: msg.SessionIndex(),
-		AssertionXML: msg.XML,
-		Level:        msg.Level(),
-		Attributes:   msg.Attributes(),
+		IDPEntityID:  response.IDP.EntityID,
+		NameID:       response.NameID(),
+		SessionIndex: response.SessionIndex(),
+		AssertionXML: response.XML,
+		Level:        response.Level(),
+		Attributes:   response.Attributes(),
 	}
 }
 
 // StatusCode returns the value of the <StatusCode> element.
-func (msg *inMessage) StatusCode() string {
-	return msg.doc.FindElement("/Response/Status/StatusCode").SelectAttrValue("Value", "")
+func (response *Response) StatusCode() string {
+	return response.doc.FindElement("/Response/Status/StatusCode").SelectAttrValue("Value", "")
 }
 
 // StatusCode2 returns the value of the <StatusCode><StatusCode> sub-element.
-func (msg *inMessage) StatusCode2() string {
-	return msg.doc.FindElement("/Response/Status/StatusCode/StatusCode").SelectAttrValue("Value", "")
+func (response *Response) StatusCode2() string {
+	return response.doc.FindElement("/Response/Status/StatusCode/StatusCode").SelectAttrValue("Value", "")
 }
 
 // StatusMessage returns the value of the <StatusMessage> element.
-func (msg *inMessage) StatusMessage() string {
-	return msg.doc.FindElement("/Response/Status/StatusMessage").Text()
+func (response *Response) StatusMessage() string {
+	return response.doc.FindElement("/Response/Status/StatusMessage").Text()
 }
 
 // NameID returns the value of the <NameID> element.
-func (msg *inMessage) NameID() string {
-	return msg.doc.FindElement("/Response/Assertion/Subject/NameID").Text()
+func (response *Response) NameID() string {
+	return response.doc.FindElement("/Response/Assertion/Subject/NameID").Text()
 }
 
 // SessionIndex returns the value of the SessionIndex attribute.
-func (msg *inMessage) SessionIndex() string {
-	return msg.doc.FindElement("/Response/Assertion/AuthnStatement").SelectAttrValue("SessionIndex", "")
+func (response *Response) SessionIndex() string {
+	return response.doc.FindElement("/Response/Assertion/AuthnStatement").SelectAttrValue("SessionIndex", "")
 }
 
 // AssertionIssuer returns the value of the <Assertion><Issuer> element.
-func (msg *inMessage) AssertionIssuer() string {
-	return msg.doc.FindElement("/Response/Assertion/Issuer").Text()
+func (response *Response) AssertionIssuer() string {
+	return response.doc.FindElement("/Response/Assertion/Issuer").Text()
 }
 
 // AssertionRecipient returns the value of the <Assertion> Recipient attribute.
-func (msg *inMessage) AssertionRecipient() string {
-	return msg.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("Recipient", "")
+func (response *Response) AssertionRecipient() string {
+	return response.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("Recipient", "")
 }
 
 // AssertionAudience returns the value of the <Assertion><Audience> element.
-func (msg *inMessage) AssertionAudience() string {
-	return msg.doc.FindElement("/Response/Assertion/Conditions/AudienceRestriction/Audience").Text()
+func (response *Response) AssertionAudience() string {
+	return response.doc.FindElement("/Response/Assertion/Conditions/AudienceRestriction/Audience").Text()
 }
 
 // AssertionInResponseTo returns the value of the <Assertion> InResponseTo attribute.
-func (msg *inMessage) AssertionInResponseTo() string {
-	return msg.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("InResponseTo", "")
+func (response *Response) AssertionInResponseTo() string {
+	return response.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("InResponseTo", "")
 }
 
 // NotBefore returns the value of the <Assertion> NotBefore attribute.
-func (msg *inMessage) NotBefore() (time.Time, error) {
-	ts := msg.doc.FindElement("/Response/Assertion/Conditions").SelectAttrValue("NotBefore", "")
+func (response *Response) NotBefore() (time.Time, error) {
+	ts := response.doc.FindElement("/Response/Assertion/Conditions").SelectAttrValue("NotBefore", "")
 	return time.Parse(time.RFC3339, ts)
 }
 
 // NotOnOrAfter returns the value of the <Assertion> NotOnOrAfter attribute.
-func (msg *inMessage) NotOnOrAfter() (time.Time, error) {
-	ts := msg.doc.FindElement("/Response/Assertion/Conditions").SelectAttrValue("NotOnOrAfter", "")
+func (response *Response) NotOnOrAfter() (time.Time, error) {
+	ts := response.doc.FindElement("/Response/Assertion/Conditions").SelectAttrValue("NotOnOrAfter", "")
 	return time.Parse(time.RFC3339, ts)
 }
 
 // SubjectConfirmationDataNotOnOrAfter returns the value of the <Assertion><SubjectConfirmationData> NotOnOrAfter attribute.
-func (msg *inMessage) SubjectConfirmationDataNotOnOrAfter() (time.Time, error) {
-	ts := msg.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("NotOnOrAfter", "")
+func (response *Response) SubjectConfirmationDataNotOnOrAfter() (time.Time, error) {
+	ts := response.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("NotOnOrAfter", "")
 	return time.Parse(time.RFC3339, ts)
 }
 
 // Level returns the SPID level specified in the assertion.
-func (msg *inMessage) Level() int {
-	ref := msg.doc.FindElement("/Response/Assertion/AuthnStatement/AuthnContext/AuthnContextClassRef").Text()
+func (response *Response) Level() int {
+	ref := response.doc.FindElement("/Response/Assertion/AuthnStatement/AuthnContext/AuthnContextClassRef").Text()
 	i, err := strconv.Atoi(string(ref[len(ref)-1]))
 	if err != nil {
 		return 0
@@ -259,9 +259,9 @@ func (msg *inMessage) Level() int {
 }
 
 // Attributes returns the attributes carried by the assertion.
-func (msg *inMessage) Attributes() map[string]string {
+func (response *Response) Attributes() map[string]string {
 	attributes := make(map[string]string)
-	for _, e := range msg.doc.FindElements("/Response/Assertion/AttributeStatement/Attribute") {
+	for _, e := range response.doc.FindElements("/Response/Assertion/AttributeStatement/Attribute") {
 		attributes[e.SelectAttr("Name").Value] = e.FindElement("AttributeValue").Text()
 	}
 	return attributes

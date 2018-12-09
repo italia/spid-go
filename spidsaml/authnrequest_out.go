@@ -6,7 +6,7 @@ import (
 )
 
 // AuthnRequest defines an outgoing SPID/SAML AuthnRequest.
-// Do not instantiate it directly but use idp.NewAuthnRequest() instead.
+// Do not instantiate it directly but use sp.NewAuthnRequest() instead.
 type AuthnRequest struct {
 	outMessage
 	AcsURL     string
@@ -41,14 +41,10 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 	data := struct {
 		*AuthnRequest
 		IssueInstant      string
-		Destination       string
-		EntityID          string
 		SignatureTemplate string
 	}{
 		authnreq,
 		authnreq.IssueInstantString(),
-		authnreq.IDP.EntityID,
-		authnreq.SP.EntityID,
 		signatureTemplate,
 	}
 
@@ -61,7 +57,7 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
     ID="{{ .ID }}"
     Version="2.0"
     IssueInstant="{{ .IssueInstant }}"
-	Destination="{{ .Destination }}"
+	Destination="{{ .IDP.EntityID }}"
 	
 	{{ if ne .AcsURL "" }}
     AssertionConsumerServiceURL="{{ .AcsURL }}"
@@ -77,9 +73,9 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 	ForceAuthn="{{ if gt .Level 1 }}true{{ else }}false{{ end }}">
 	
 	<saml:Issuer
-        NameQualifier="{{ .EntityID }}"
+        NameQualifier="{{ .SP.EntityID }}"
         Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">
-        {{ .EntityID }}
+        {{ .SP.EntityID }}
 	</saml:Issuer>
 
 	{{ .SignatureTemplate }}
@@ -93,7 +89,7 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 </samlp:AuthnRequest>
 `
 
-	t := template.Must(template.New("metadata").Parse(tmpl))
+	t := template.Must(template.New("req").Parse(tmpl))
 	var metadata bytes.Buffer
 	t.Execute(&metadata, data)
 	return metadata.Bytes()
