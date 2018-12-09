@@ -29,21 +29,21 @@ This Go package is aimed at implementing SPID Service Providers. [SPID](https://
 |`RequestedAuthnContext/@Comparison` customization|✓|
 |`RelayState` customization (1.2.2)|✓|
 |**Response/Assertion parsing**||
-|verification of `Signature` value (if any)||
-|verification of `Signature` certificate (if any) against IdP/AA metadata||
-|verification of `Assertion/Signature` value||
-|verification of `Assertion/Signature` certificate against IdP/AA metadata||
-|verification of `SubjectConfirmationData/@Recipient`||
-|verification of `SubjectConfirmationData/@NotOnOrAfter`||
-|verification of `SubjectConfirmationData/@InResponseTo`||
+|verification of `Signature` value (if any)|✓|
+|verification of `Signature` certificate (if any) against IdP/AA metadata|✓|
+|verification of `Assertion/Signature` value|✓|
+|verification of `Assertion/Signature` certificate against IdP/AA metadata|✓|
+|verification of `SubjectConfirmationData/@Recipient`|✓|
+|verification of `SubjectConfirmationData/@NotOnOrAfter`|✓|
+|verification of `SubjectConfirmationData/@InResponseTo`|✓|
 |verification of `Issuer`|✓|
-|verification of `Assertion/Issuer`||
+|verification of `Assertion/Issuer`|✓|
 |verification of `Destination`|✓|
-|verification of `Conditions/@NotBefore`||
-|verification of `Conditions/@NotOnOrAfter`||
-|verification of `Audience`||
-|parsing of Response with no `Assertion` (authentication/query failure)||
-|parsing of failure `StatusCode` (Requester/Responder)||
+|verification of `Conditions/@NotBefore`|✓|
+|verification of `Conditions/@NotOnOrAfter`|✓|
+|verification of `Audience`|✓|
+|parsing of Response with no `Assertion` (authentication/query failure)|✓|
+|parsing of failure `StatusCode` (Requester/Responder)|✓|
 |**Response/Assertion parsing for SSO (1.2.1, 1.2.2.2, 1.3.1):**||
 |parsing of `NameID`|✓|
 |parsing of `AuthnContextClassRef` (SPID level)|✓|

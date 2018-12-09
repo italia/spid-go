@@ -3,6 +3,7 @@ package spidsaml
 import (
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -119,4 +120,9 @@ func (sp *SP) LoadIDPMetadata(dir string) error {
 	}
 
 	return nil
+}
+
+// CertPEM returns the IdP certificate in PEM format.
+func (idp *IDP) CertPEM() []byte {
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: idp.Cert.Raw})
 }

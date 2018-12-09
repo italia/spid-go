@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"io"
@@ -81,15 +82,38 @@ const tmplLayout = `<!DOCTYPE html>
 </html>
 `
 
+const tmplUser = `<p>This page shows details about the currently logged user.</p>
+<p><a class="btn btn-primary" href="/logout">Logout</a></p>
+<h1>NameID:</h1>
+<p>{{ .NameID }}</p>
+<h2>SPID Level:</h2>
+<p>{{ .Level }}</p>
+<h2>Attributes</h2>
+<table>
+  <tr>
+    <th>Key</th>
+    <th>Value</th>
+  </tr>
+  {{ range $key, $val := .Attributes }}
+      <tr>
+        <td>{{ $key }}</td>
+        <td>{{ $val }}</td>
+	  </tr>
+  {{ end }}
+</table>
+`
+
 // If we have an active SPID session, display a page with user attributes,
 // otherwise show a generic login page containing the SPID button.
 func index(w http.ResponseWriter, r *http.Request) {
+	t := template.Must(template.New("index").Parse(tmplLayout))
 	if spidSession == nil {
 		button := sp.GetButton("/spid-login?idp=%s")
-		t := template.Must(template.New("index").Parse(tmplLayout))
 		t.Execute(w, template.HTML(button))
 	} else {
-		fmt.Fprintf(w, spidSession.Attributes["name"])
+		var t2 bytes.Buffer
+		template.Must(template.New("user").Parse(tmplUser)).Execute(&t2, spidSession)
+		t.Execute(w, template.HTML(t2.String()))
 	}
 }
 
@@ -151,7 +175,7 @@ func spidSSO(w http.ResponseWriter, r *http.Request) {
 
 	// In case of SSO failure, display an error page.
 	if err != nil {
-		fmt.Printf("Bad Assertion received: %s\n", err)
+		fmt.Printf("Bad Response received: %s\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

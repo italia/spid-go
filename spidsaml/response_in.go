@@ -3,6 +3,9 @@ package spidsaml
 import (
 	"fmt"
 	"strconv"
+	"time"
+
+	xmlsec "github.com/crewjam/go-xmlsec"
 )
 
 // Response represents an incoming SPID Response/Assertion message. We get such messages after an AuthnRequest (Single Sign-On).
@@ -60,59 +63,104 @@ func (response *Response) validate(inResponseTo string) error {
 		return fmt.Errorf("Invalid Destination: '%s'", destination)
 	}
 
-	/*
-		TODO: port this
+	if response.Success() {
+		// We expect to have an <Assertion> element
 
-				if ($self->success) {
-			        # We expect to have an <Assertion> element
+		if response.Issuer() != response.AssertionIssuer() {
+			return fmt.Errorf("Response/Issuer (%s) does not match Assertion/Issuer (%s)",
+				response.Issuer(), response.AssertionIssuer())
+		}
 
-			        croak sprintf "Response/Issuer (%s) does not match Assertion/Issuer (%s)",
-			            $self->Issuer, $self->Assertion_Issuer
-			            if $self->Issuer ne $self->Assertion_Issuer;
+		if response.AssertionAudience() != response.SP.EntityID {
+			return fmt.Errorf("Invalid Audience: '%s' (expected: '%s')",
+				response.AssertionAudience(), response.SP.EntityID)
+		}
 
-			        croak sprintf "Invalid Audience: '%s' (expected: '%s')",
-			            $self->Assertion_Audience, $self->_spid->sp_entityid
-			            if $self->Assertion_Audience ne $self->_spid->sp_entityid;
+		if response.AssertionInResponseTo() != inResponseTo {
+			return fmt.Errorf("Invalid InResponseTo: '%s' (expected: '%s')",
+				response.AssertionInResponseTo(), inResponseTo)
+		}
 
-			        croak sprintf "Invalid InResponseTo: '%s' (expected: '%s')",
-			            $self->Assertion_InResponseTo, $args{in_response_to}
-			            if $self->Assertion_InResponseTo ne $args{in_response_to};
+		err = xmlsec.Verify(response.IDP.CertPEM(), response.XML, xmlsec.SignatureOptions{
+			XMLID: []xmlsec.XMLIDOption{
+				{
+					ElementName:      "Assertion",
+					ElementNamespace: "",
+					AttributeName:    "ID",
+				},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("Assertion signature verification failed: %s", err.Error())
+		}
 
-			        # this validates all the signatures in the given XML, and requires that at least one exists
-			        my $pubkey = Crypt::OpenSSL::RSA->new_public_key($self->_idp->cert->pubkey);
-			        Mojo::XMLSig::verify($self->xml, $pubkey)
-			            or croak "Signature verification failed";
+		// SPID regulations require that Assertion is signed, while Response can be not signed
+		if response.doc.FindElement("/Response/Signature") != nil {
+			err = xmlsec.Verify(response.IDP.CertPEM(), response.XML, xmlsec.SignatureOptions{
+				XMLID: []xmlsec.XMLIDOption{
+					{
+						ElementName:      "Response",
+						ElementNamespace: "",
+						AttributeName:    "ID",
+					},
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("Response signature verification failed: %s", err.Error())
+			}
+		}
 
-			        # SPID regulations require that Assertion is signed, while Response can be not signed
-			        croak "Response/Assertion is not signed"
-			            if $xpath->findnodes('/samlp:Response/saml:Assertion/dsig:Signature')->size == 0;
+		now := time.Now().UTC()
 
-			        my $now = DateTime->now;
+		// exact match is ok
+		notBefore, err := response.NotBefore()
+		if err != nil {
+			return err
+		}
+		if now.Before(notBefore) {
+			return fmt.Errorf("Invalid NotBefore: '%s' (now: '%s')",
+				notBefore.Format(time.RFC3339), now.Format(time.RFC3339))
+		}
 
-			        # exact match is ok
-			        croak sprintf "Invalid NotBefore: '%s' (now: '%s')",
-			            $self->NotBefore->iso8601, $now->iso8601
-			            if DateTime->compare($now, $self->NotBefore) < 0;
+		// exact match is *not* ok
+		notOnOrAfter, err := response.NotOnOrAfter()
+		if err != nil {
+			return err
+		}
+		if now.After(notOnOrAfter) || now.Equal(notOnOrAfter) {
+			fmt.Println(string(response.XML))
+			return fmt.Errorf("Invalid NotOnOrAfter: '%s' (now: '%s')",
+				notOnOrAfter.Format(time.RFC3339), now.Format(time.RFC3339))
+		}
 
-			        # exact match is *not* ok
-			        croak sprintf "Invalid NotOnOrAfter: '%s' (now: '%s')",
-			            $self->NotOnOrAfter->iso8601, $now->iso8601
-			            if DateTime->compare($now, $self->NotOnOrAfter) > -1;
+		// exact match is *not* ok
+		scdNotOnOrAfter, err := response.NotOnOrAfter()
+		if err != nil {
+			return err
+		}
+		if now.After(scdNotOnOrAfter) || now.Equal(scdNotOnOrAfter) {
+			return fmt.Errorf("Invalid SubjectConfirmationData/NotOnOrAfter: '%s' (now: '%s')",
+				scdNotOnOrAfter.Format(time.RFC3339), now.Format(time.RFC3339))
+		}
 
-			        # exact match is *not* ok
-			        croak sprintf "Invalid SubjectConfirmationData/NotOnOrAfter: '%s' (now: '%s')",
-			            $self->SubjectConfirmationData_NotOnOrAfter->iso8601, $now->iso8601
-			            if DateTime->compare($now, $self->SubjectConfirmationData_NotOnOrAfter) > -1;
+		assertionRecipient := response.AssertionRecipient()
+		knownRecipient := false
+		for _, acs := range response.SP.AssertionConsumerServices {
+			if acs == assertionRecipient {
+				knownRecipient = true
+				break
+			}
+		}
+		if !knownRecipient {
+			return fmt.Errorf("Invalid SubjectConfirmationData/@Recipient': '%s'", assertionRecipient)
+		}
 
-			        croak "Invalid SubjectConfirmationData/\@Recipient'"
-			            if !grep { $_ eq $self->Assertion_Recipient } @{$self->_spid->sp_assertionconsumerservice};
-
-			        croak "Mismatch between Destination and SubjectConfirmationData/\@Recipient"
-			            if $self->Destination ne $self->Assertion_Recipient;
-			    } else {
-			        # Authentication failed, so we expect no <Assertion> element.
-				}
-	*/
+		if response.Destination() != response.AssertionRecipient() {
+			return fmt.Errorf("Mismatch between Destination and SubjectConfirmationData/@Recipient")
+		}
+	} else {
+		// Authentication failed, so we expect no <Assertion> element.
+	}
 
 	return nil
 }
@@ -160,6 +208,44 @@ func (msg *inMessage) NameID() string {
 // SessionIndex returns the value of the SessionIndex attribute.
 func (msg *inMessage) SessionIndex() string {
 	return msg.doc.FindElement("/Response/Assertion/AuthnStatement").SelectAttrValue("SessionIndex", "")
+}
+
+// AssertionIssuer returns the value of the <Assertion><Issuer> element.
+func (msg *inMessage) AssertionIssuer() string {
+	return msg.doc.FindElement("/Response/Assertion/Issuer").Text()
+}
+
+// AssertionRecipient returns the value of the <Assertion> Recipient attribute.
+func (msg *inMessage) AssertionRecipient() string {
+	return msg.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("Recipient", "")
+}
+
+// AssertionAudience returns the value of the <Assertion><Audience> element.
+func (msg *inMessage) AssertionAudience() string {
+	return msg.doc.FindElement("/Response/Assertion/Conditions/AudienceRestriction/Audience").Text()
+}
+
+// AssertionInResponseTo returns the value of the <Assertion> InResponseTo attribute.
+func (msg *inMessage) AssertionInResponseTo() string {
+	return msg.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("InResponseTo", "")
+}
+
+// NotBefore returns the value of the <Assertion> NotBefore attribute.
+func (msg *inMessage) NotBefore() (time.Time, error) {
+	ts := msg.doc.FindElement("/Response/Assertion/Conditions").SelectAttrValue("NotBefore", "")
+	return time.Parse(time.RFC3339, ts)
+}
+
+// NotOnOrAfter returns the value of the <Assertion> NotOnOrAfter attribute.
+func (msg *inMessage) NotOnOrAfter() (time.Time, error) {
+	ts := msg.doc.FindElement("/Response/Assertion/Conditions").SelectAttrValue("NotOnOrAfter", "")
+	return time.Parse(time.RFC3339, ts)
+}
+
+// SubjectConfirmationDataNotOnOrAfter returns the value of the <Assertion><SubjectConfirmationData> NotOnOrAfter attribute.
+func (msg *inMessage) SubjectConfirmationDataNotOnOrAfter() (time.Time, error) {
+	ts := msg.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("NotOnOrAfter", "")
+	return time.Parse(time.RFC3339, ts)
 }
 
 // Level returns the SPID level specified in the assertion.
