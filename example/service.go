@@ -129,7 +129,7 @@ func metadata(w http.ResponseWriter, r *http.Request) {
 func spidLogin(w http.ResponseWriter, r *http.Request) {
 	// Check that we have the mandatory 'idp' parameter and that it matches
 	// an available Identity Provider.
-	idp, err := sp.GetIDP(r.URL.Query()["idp"][0])
+	idp, err := sp.GetIDP(r.URL.Query().Get("idp"))
 	if err != nil {
 		http.Error(w, "Invalid IdP selected", http.StatusBadRequest)
 		return
@@ -242,7 +242,7 @@ func spidSLO(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.ParseForm()
-	if r.Form.Get("SAMLResponse") != "" && logoutReqID != "" {
+	if (r.Form.Get("SAMLResponse") != "" || r.URL.Query().Get("SAMLResponse") != "") && logoutReqID != "" {
 		// This is the response to a SP-initiated logout.
 
 		// Parse the response and catch validation errors.
@@ -268,7 +268,7 @@ func spidSLO(w http.ResponseWriter, r *http.Request) {
 
 		// Redirect user back to main page.
 		http.Redirect(w, r, "/", http.StatusSeeOther)
-	} else if r.Form.Get("SAMLRequest") != "" {
+	} else if r.Form.Get("SAMLRequest") != "" || r.URL.Query().Get("SAMLRequest") != "" {
 		// This is a LogoutRequest (IdP-initiated logout).
 
 		logoutreq, err := sp.ParseLogoutRequest(r)
