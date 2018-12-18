@@ -158,8 +158,7 @@ func spidLogin(w http.ResponseWriter, r *http.Request) {
 // During SSO, the Identity Provider will redirect user to this URL POSTing
 // the resulting assertion.
 func spidSSO(w http.ResponseWriter, r *http.Request) {
-	// Parse and verify the incoming assertion. This may throw exceptions so we
-	// enclose it in an eval {} block.
+	// Parse and verify the incoming assertion.
 	r.ParseForm()
 	response, err := sp.ParseResponse(
 		r,
