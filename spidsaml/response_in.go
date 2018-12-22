@@ -86,26 +86,20 @@ func (response *Response) validate(inResponseTo string) error {
 					ElementNamespace: "",
 					AttributeName:    "ID",
 				},
+				{
+					ElementName:      "Response",
+					ElementNamespace: "",
+					AttributeName:    "ID",
+				},
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("Assertion signature verification failed: %s", err.Error())
+			return fmt.Errorf("Signature verification failed: %s", err.Error())
 		}
 
 		// SPID regulations require that Assertion is signed, while Response can be not signed
-		if response.doc.FindElement("/Response/Signature") != nil {
-			err = xmlsec.Verify(response.IDP.CertPEM(), response.XML, xmlsec.SignatureOptions{
-				XMLID: []xmlsec.XMLIDOption{
-					{
-						ElementName:      "Response",
-						ElementNamespace: "",
-						AttributeName:    "ID",
-					},
-				},
-			})
-			if err != nil {
-				return fmt.Errorf("Response signature verification failed: %s", err.Error())
-			}
+		if response.doc.FindElement("/Response/Assertion/Signature") == nil {
+			return fmt.Errorf("Assertion is not signed")
 		}
 
 		now := time.Now().UTC()
