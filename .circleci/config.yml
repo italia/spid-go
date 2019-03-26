@@ -6,6 +6,7 @@ jobs:
       - image: circleci/golang:1.11
     steps:
       - checkout
+      - run: cd spidsaml
       - run: export CGO_CFLAGS_ALLOW=".*"
       - run: go test -race
 
