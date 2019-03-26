@@ -1,0 +1,16 @@
+# Golang CircleCI 2.0 configuration file
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.11
+    steps:
+      - checkout
+      - run: export CGO_CFLAGS_ALLOW=".*"
+      - run: go test -race
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
