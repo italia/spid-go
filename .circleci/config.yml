@@ -4,9 +4,10 @@ jobs:
   build:
     docker:
       - image: circleci/golang:1.11
+    environment:
+      - CGO_CFLAGS_ALLOW: ".*"
     steps:
       - checkout
-      - run: export CGO_CFLAGS_ALLOW=".*"
       - run: sudo apt install -y libxmlsec1-dev
       - run: go get ./spidsaml/
       - run: go test -race ./spidsaml/
