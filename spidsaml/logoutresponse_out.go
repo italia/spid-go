@@ -48,16 +48,15 @@ func (logoutres *LogoutResponseOut) XML(binding SAMLBinding) []byte {
 
 	data := struct {
 		*LogoutResponseOut
+		Destination       string
 		IssueInstant      string
 		SignatureTemplate string
 	}{
 		logoutres,
+		logoutres.IDP.SLOResURLs[binding],
 		logoutres.IssueInstantString(),
 		signatureTemplate,
 	}
-
-	// According to SAML rules, Destination should be set to logoutreq.IDP.SLOReqURLs[binding]
-	// but SPID rules want the entityID instead.
 
 	// TODO: what should we send in case of .Status == "failed"?
 	// TODO: is it correct to send PartialLogout in case of .Status == "partial"?
@@ -68,7 +67,7 @@ func (logoutres *LogoutResponseOut) XML(binding SAMLBinding) []byte {
 		ID="{{ .ID }}"
 		Version="2.0"
 		IssueInstant="{{ .IssueInstant }}"
-		Destination="{{ .IDP.EntityID }}"
+		Destination="{{ .Destination }}"
 		InResponseTo="{{ .InResponseTo }}">
 	
 	<saml:Issuer

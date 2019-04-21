@@ -40,16 +40,15 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 
 	data := struct {
 		*AuthnRequest
+		Destination       string
 		IssueInstant      string
 		SignatureTemplate string
 	}{
 		authnreq,
+		authnreq.IDP.SSOURLs[binding],
 		authnreq.IssueInstantString(),
 		signatureTemplate,
 	}
-
-	// According to SAML rules, Destination should be set to self.GetIdPSSOURL(binding)
-	// but SPID rules want the entityID instead.
 
 	const tmpl = `<?xml version="1.0"?> 
 	<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
@@ -57,7 +56,7 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
     ID="{{ .ID }}"
     Version="2.0"
     IssueInstant="{{ .IssueInstant }}"
-	Destination="{{ .IDP.EntityID }}"
+	Destination="{{ .Destination }}"
 	
 	{{ if ne .AcsURL "" }}
     AssertionConsumerServiceURL="{{ .AcsURL }}"

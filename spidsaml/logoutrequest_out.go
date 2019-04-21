@@ -39,16 +39,15 @@ func (logoutreq *LogoutRequestOut) XML(binding SAMLBinding) []byte {
 
 	data := struct {
 		*LogoutRequestOut
+		Destination       string
 		IssueInstant      string
 		SignatureTemplate string
 	}{
 		logoutreq,
+		logoutreq.IDP.SLOReqURLs[binding],
 		logoutreq.IssueInstantString(),
 		signatureTemplate,
 	}
-
-	// According to SAML rules, Destination should be set to logoutreq.IDP.SLOReqURLs[binding]
-	// but SPID rules want the entityID instead.
 
 	const tmpl = `<?xml version="1.0"?> 
 	<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
@@ -56,7 +55,7 @@ func (logoutreq *LogoutRequestOut) XML(binding SAMLBinding) []byte {
 		ID="{{ .ID }}"
 		Version="2.0"
 		IssueInstant="{{ .IssueInstant }}"
-		Destination="{{ .IDP.EntityID }}">
+		Destination="{{ .Destination }}">
 	
 	<saml:Issuer
 		NameQualifier="{{ .SP.EntityID }}"
