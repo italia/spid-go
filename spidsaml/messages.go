@@ -228,7 +228,7 @@ func (msg *inMessage) parse(r *http.Request, param string) error {
 
 func (msg *inMessage) validate() error {
 	var err error
-	msg.IDP, err = msg.SP.GetIDP(msg.Issuer())
+	msg.IDP, err = msg.SP.GetIDP(strings.TrimSpace(msg.Issuer()))
 	if err != nil {
 		return err
 	}
