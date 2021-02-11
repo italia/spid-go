@@ -8,6 +8,7 @@ jobs:
       - CGO_CFLAGS_ALLOW: ".*"
     steps:
       - checkout
+      - run: sudo apt update
       - run: sudo apt install -y libxmlsec1-dev
       - run: go get ./spidsaml/
       - run: go test -race ./spidsaml/
