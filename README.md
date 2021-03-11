@@ -24,7 +24,20 @@ The [example/](example/) directory contains a demo web application. Just follow 
 
 4. Configure [spid-testenv2](https://github.com/italia/spid-testenv2) and load the above Service Provider metadata into it.
 
-5. Launch [http://localhost:8000](http://localhost:8000) and enjoy your SPID demo.
+5. Get the metadata file of the spid-testenv2 demo Identity Provider (its default location is [http://localhost:8088/metadata](http://localhost:8088/metadata)) and save it in the example/idp_metadata directory.
+
+6. Launch [http://localhost:8000](http://localhost:8000) and enjoy your SPID demo.
+
+## Using different keys
+
+If you want to use different keys/certificate:
+
+1. Use the [SPID compliant certificate builder](https://github.com/italia/spid-compliant-certificates)
+   
+2. The above tool will create a [PKCS#8](https://en.wikipedia.org/wiki/PKCS) private key (key.pem) and a certificate (crt.pem). For this example we need to extract the RSA private key from the PKCS#8 file. In order to do this, we need to run this command:
+   ```bash
+   openssl rsa -in key.pem -out key.rsa.pem
+   ```
 
 ## Features
 

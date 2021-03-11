@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"../spidsaml"
+	"github.com/italia/spid-go/spidsaml"
 )
 
 // This demo application shows how to use the spidsaml package
@@ -28,9 +28,9 @@ var authnReqID, logoutReqID string
 func main() {
 	// Initialize our SPID object with information about this Service Provider
 	sp = &spidsaml.SP{
-		EntityID: "https://www.foobar.it/",
-		KeyFile:  "sp.key",
-		CertFile: "sp.pem",
+		EntityID: "https://spid.comune.roma.it",
+		KeyFile:  "key.rsa.pem",
+		CertFile: "crt.pem",
 		AssertionConsumerServices: []string{
 			"http://localhost:8000/spid-sso",
 		},
