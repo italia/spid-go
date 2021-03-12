@@ -21,7 +21,7 @@ var sp *spidsaml.SP
 // These variables belong the session of each user. In an actual application
 // you would NOT store them as global variables, but you'd store them in the
 // user session backed by a cookie, using for example github.com/gorilla/sessions,
-// but for simplificy in this example application we are doing this way.
+// but for simplicity in this example application we are doing this way.
 var spidSession *spidsaml.Session
 var authnReqID, logoutReqID string
 
