@@ -35,7 +35,7 @@ If you want to use different keys/certificate:
 1. Use the [SPID compliant certificate builder](https://github.com/italia/spid-compliant-certificates)
    
 2. The above tool will create a [PKCS#8](https://en.wikipedia.org/wiki/PKCS) private key (key.pem) and a certificate (crt.pem). This package can handle RSA keys both in PKCS#8 and in PKCS#1 format.
-   If you would like to use the PKCS#1 format, we need to extract the RSA private key from the PKCS#8 file. In order to do this, we need to run this command:
+   If you like to use the PKCS#1 format, we need to extract the RSA private key from the PKCS#8 file. In order to do this, we need to run this command:
    ```bash
    openssl rsa -in key.pem -out key.rsa.pem
    ```
