@@ -29,7 +29,7 @@ func main() {
 	// Initialize our SPID object with information about this Service Provider
 	sp = &spidsaml.SP{
 		EntityID: "https://spid.comune.roma.it",
-		KeyFile:  "key.rsa.pem",
+		KeyFile:  "key.pem",
 		CertFile: "crt.pem",
 		AssertionConsumerServices: []string{
 			"http://localhost:8000/spid-sso",
