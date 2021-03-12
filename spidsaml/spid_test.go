@@ -3,6 +3,7 @@ package spidsaml
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"strings"
 	"testing"
 )
 
@@ -65,6 +66,43 @@ func TestSP_Cert(t *testing.T) {
 			returnedErr := err != nil
 
 			if returnedErr != tc.returnErr {
+				t.Fail()
+			}
+		})
+	}
+}
+
+func TestSP_Metadata(t *testing.T) {
+	sp := &SP{
+		EntityID: "https://spid.comune.roma.it",
+		KeyFile:  "../fixtures/key.pem",
+		CertFile: "../fixtures/crt.pem",
+		AssertionConsumerServices: []string{
+			"http://localhost:8000/spid-sso",
+		},
+		SingleLogoutServices: map[string]SAMLBinding{
+			"http://localhost:8000/spid-slo": HTTPRedirect,
+		},
+		AttributeConsumingServices: []AttributeConsumingService{
+			{
+				ServiceName: "Service 1",
+				Attributes:  []string{"fiscalNumber", "name", "familyName", "dateOfBirth"},
+			},
+		},
+	}
+	cases := []struct {
+		attribute   string
+		name      string
+	}{
+		{
+			attribute: `entityID="https://spid.comune.roma.it"`,
+			name:		"Contains the right entityID",
+		},
+	}
+	metadata := sp.Metadata()
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if !strings.Contains(metadata, tc.attribute)  {
 				t.Fail()
 			}
 		})
