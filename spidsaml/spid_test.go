@@ -3,6 +3,8 @@ package spidsaml
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"github.com/beevik/etree"
+	"github.com/crewjam/go-xmlsec"
 	"strings"
 	"testing"
 )
@@ -73,7 +75,73 @@ func TestSP_Cert(t *testing.T) {
 }
 
 func TestSP_Metadata(t *testing.T) {
-	sp := &SP{
+	sp := createSPForTes()
+	cases := []struct {
+		attribute string
+		name      string
+	}{
+		{
+			attribute: `entityID="https://spid.comune.roma.it"`,
+			name:      "Contains the right entityID",
+		},
+	}
+	metadata := sp.Metadata()
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if !strings.Contains(metadata, tc.attribute) {
+				t.Fail()
+			}
+		})
+	}
+}
+
+func TestSP_KeyPEM(t *testing.T) {
+	sp := createSPForTes()
+
+	xml := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<Envelope xmlns="urn:envelope">
+  <Data>
+	Hello, World!
+  </Data>
+  <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+    <SignedInfo>
+      <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+      <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1" />
+      <Reference URI="">
+        <Transforms>
+          <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+        </Transforms>
+        <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
+        <DigestValue></DigestValue>
+      </Reference>
+    </SignedInfo>
+    <SignatureValue/>
+    <KeyInfo>
+	<KeyName/>
+    </KeyInfo>
+  </Signature>
+</Envelope>`)
+
+	doc := etree.NewDocument()
+	doc.ReadFromBytes(xml)
+
+	signatureOptions := xmlsec.SignatureOptions{}
+
+	signedDoc, errSign := xmlsec.Sign(sp.KeyPEM(), xml, signatureOptions)
+
+	if errSign != nil {
+		t.Error("Error during signing phase:", errSign)
+	}
+
+	errVerify := xmlsec.Verify(sp.CertPEM(), signedDoc, signatureOptions)
+
+	if errVerify != nil {
+		t.Error("Error during verifing phase", errVerify)
+	}
+}
+
+func createSPForTes() *SP {
+	return &SP{
 		EntityID: "https://spid.comune.roma.it",
 		KeyFile:  "../fixtures/key.pem",
 		CertFile: "../fixtures/crt.pem",
@@ -89,23 +157,6 @@ func TestSP_Metadata(t *testing.T) {
 				Attributes:  []string{"fiscalNumber", "name", "familyName", "dateOfBirth"},
 			},
 		},
-	}
-	cases := []struct {
-		attribute   string
-		name      string
-	}{
-		{
-			attribute: `entityID="https://spid.comune.roma.it"`,
-			name:		"Contains the right entityID",
-		},
-	}
-	metadata := sp.Metadata()
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if !strings.Contains(metadata, tc.attribute)  {
-				t.Fail()
-			}
-		})
 	}
 }
 

@@ -49,11 +49,20 @@ type Session struct {
 	Attributes   map[string]string
 }
 
+// CertPEM returns the of this Service Provider. certificate in PEM format.
+func (sp *SP) CertPEM() []byte {
+	byteValue, err := ioutil.ReadFile(sp.CertFile)
+	if err != nil {
+		panic(err)
+	}
+	return byteValue
+}
+
 // Cert returns the certificate of this Service Provider.
 func (sp *SP) Cert() *x509.Certificate {
 	if sp._cert == nil {
 		// read file as a byte array
-		byteValue, _ := ioutil.ReadFile(sp.CertFile)
+		byteValue := sp.CertPEM()
 
 		block, _ := pem.Decode(byteValue)
 		if block == nil || block.Type != "CERTIFICATE" {
