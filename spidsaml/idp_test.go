@@ -1,6 +1,8 @@
 package spidsaml
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestNewIDPFromXML(t *testing.T) {
 	idp := NewIDPFromXML([]byte(`<?xml version='1.0' encoding='UTF-8'?>
@@ -29,5 +31,36 @@ func TestNewIDPFromXML(t *testing.T) {
 	}
 	if idp.SLOReqURLs[HTTPPost] != "http://localhost:8088/slo" {
 		t.Error("Failed to parse SingleLogoutService")
+	}
+}
+
+func TestSP_LoadIDPMetadata(t *testing.T) {
+	sp := &SP{
+	}
+
+	if err := sp.LoadIDPMetadata("../idp_metadata"); err != nil {
+		t.Error(err)
+	}
+
+	idpIds := []string{
+		"https://identity.infocert.it",
+		"https://posteid.poste.it",
+		"https://spid.register.it",
+		"https://identity.sieltecloud.it",
+		"https://loginspid.aruba.it",
+		"https://spid.intesa.it",
+		"https://id.lepida.it/idp/shibboleth",
+		"https://idp.namirialtsp.com/idp",
+		"https://login.id.tim.it/affwebservices/public/saml2sso",
+	}
+
+	if nrOfMetadata := len(sp.IDP); nrOfMetadata != len(idpIds) {
+		t.Errorf("Expected metadata for %d IDP but fond %d", len(idpIds), nrOfMetadata)
+	}
+
+	for _, k := range idpIds {
+		if (sp.IDP[k] == nil) {
+			t.Errorf("Metadata for %s not found", k)
+		}
 	}
 }
