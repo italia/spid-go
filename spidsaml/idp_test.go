@@ -59,7 +59,7 @@ func TestSP_LoadIDPMetadata(t *testing.T) {
 	}
 
 	for _, k := range idpIds {
-		if (sp.IDP[k] == nil) {
+		if idp, _ :=sp.GetIDP(k); idp == nil  {
 			t.Errorf("Metadata for %s not found", k)
 		}
 	}
