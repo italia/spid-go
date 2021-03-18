@@ -48,7 +48,7 @@ func (response *Response) validate(inResponseTo string) error {
 	}
 
 	// As of current SPID spec, Destination might be populated with the entityID
-	// instead of the ACS URL
+	// instead of the ACS URL
 	destination := response.Destination()
 	knownDestination := destination == response.SP.EntityID
 	for _, acs := range response.SP.AssertionConsumerServices {
@@ -102,7 +102,7 @@ func (response *Response) validate(inResponseTo string) error {
 			return fmt.Errorf("Assertion is not signed")
 		}
 
-		now := time.Now().UTC()
+		now := response.clock.Now().UTC()
 
 		// exact match is ok
 		notBefore, err := response.NotBefore()

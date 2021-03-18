@@ -183,7 +183,7 @@ func spidSSO(w http.ResponseWriter, r *http.Request) {
 
 	// Log response as required by the SPID rules.
 	// Hint: log it in a way that does not mangle whitespace preventing signature from
-	// being verified at a later time
+	// being verified at a later time
 	fmt.Printf("SPID Response: %s\n", response.XML)
 
 	if response.Success() {

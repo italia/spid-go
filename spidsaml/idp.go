@@ -83,18 +83,12 @@ func NewIDPFromXML(xml []byte) *IDP {
 
 // LoadIDPFromXMLFile loads an Identity Provider from its XML metadata.
 func (sp *SP) LoadIDPFromXMLFile(path string) error {
-	// open XML file
-	xmlFile, err := os.Open(path)
+
+	idp, err := LoadIDPFrom(path)
+
 	if err != nil {
-		return err
+		return nil
 	}
-	defer xmlFile.Close()
-
-	// read our opened xmlFile as a byte array.
-	byteValue, _ := ioutil.ReadAll(xmlFile)
-
-	// load the IdP
-	idp := NewIDPFromXML(byteValue)
 
 	// store the loaded IdP
 	if sp.IDP == nil {
@@ -103,6 +97,26 @@ func (sp *SP) LoadIDPFromXMLFile(path string) error {
 	sp.IDP[idp.EntityID] = idp
 
 	return nil
+}
+
+func LoadIDPFrom(path string) (*IDP, error) {
+	// open XML file
+	xmlFile, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer xmlFile.Close()
+
+	// read our opened xmlFile as a byte array.
+	byteValue, err := ioutil.ReadAll(xmlFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// load the IdP
+	idp := NewIDPFromXML(byteValue)
+
+	return idp, nil
 }
 
 // LoadIDPMetadata load one or multiple Identity Providers by reading all the XML files in the given directory.

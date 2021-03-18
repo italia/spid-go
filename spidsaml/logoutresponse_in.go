@@ -48,7 +48,7 @@ func (logoutres *LogoutResponseIn) validate(r *http.Request, inResponseTo string
 	}
 
 	// As of current SPID spec, Destination might be populated with the entityID
-	// instead of the ACS URL
+	// instead of the ACS URL
 	destination := logoutres.Destination()
 	knownDestination := destination == logoutres.SP.EntityID
 	for sls := range logoutres.SP.SingleLogoutServices {

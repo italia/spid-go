@@ -26,6 +26,7 @@ import (
 type protocolMessage struct {
 	SP  *SP
 	IDP *IDP
+	clock *Clock
 }
 
 // outMessage is the base class for all outgoing message
@@ -55,7 +56,7 @@ func generateMessageID() string {
 
 func (msg *outMessage) IssueInstant() *time.Time {
 	if msg.issueInstant == nil {
-		t := time.Now().UTC()
+		t := msg.clock.Now().UTC()
 		msg.issueInstant = &t
 	}
 	return msg.issueInstant
