@@ -7,8 +7,10 @@ import (
 )
 
 func TestResponse_verify_response_from_IDP(t *testing.T) {
+	const REAL_REQUESTID = "_56b83874b956b3140a8d6767072f546c"
 	cases := []struct {
 		testClock *Clock
+		requestId string
 		returnErr bool
 		name      string
 	}{
@@ -16,13 +18,21 @@ func TestResponse_verify_response_from_IDP(t *testing.T) {
 			testClock : &Clock{
 				instant: time.Date(2021, time.Month(3), 18, 16, 37, 0, 0, time.UTC),
 			},
+			requestId: REAL_REQUESTID,
 			returnErr: false,
-			name:      "Can verfy a response in the correc time interval",
+			name:      "Can verfy a response in the correct time interval",
+		},
+		{
+			testClock: nil,
+			requestId: REAL_REQUESTID,
+			returnErr: true,
+			name:      "Using the real clock should give error because time has gone by",
 		},
 		{
 			testClock:  nil,
+			requestId: "aWrongRequestId",
 			returnErr: true,
-			name:      "Using the real clock should give error because time has gone by",
+			name:      "Can check if the response is for the wrong requestId",
 		},
 	}
 	for _, tc := range cases {
@@ -42,8 +52,7 @@ func TestResponse_verify_response_from_IDP(t *testing.T) {
 			response.doc = etree.NewDocument()
 			response.doc.ReadFromBytes(response.XML)
 
-			requestId := "_56b83874b956b3140a8d6767072f546c"
-			err := response.validate(requestId)
+			err := response.validate(tc.requestId)
 			if err != nil && !tc.returnErr {
 				t.Error("Failed to validate response with error ", err)
 			}
