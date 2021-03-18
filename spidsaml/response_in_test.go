@@ -6,29 +6,52 @@ import (
 	"time"
 )
 
-func TestResponse_can_verify_response_from_IDP(t *testing.T) {
-	testClock := Clock{
-		instant: time.Date(2021, time.Month(3), 18, 16, 37, 0, 0, time.UTC),
-	}
-	sp := createSPForTes()
-	sp.LoadIDPFromXMLFile("../fixtures/idp_metadata/testenv2_metadata.xml")
-	response := &Response{
-		inMessage: inMessage{
-			protocolMessage: protocolMessage{
-				SP:  sp,
-				IDP: sp.IDP["http://localhost:8088"],
-				clock: &testClock,
+func TestResponse_verify_response_from_IDP(t *testing.T) {
+	cases := []struct {
+		testClock *Clock
+		returnErr bool
+		name      string
+	}{
+		{
+			testClock : &Clock{
+				instant: time.Date(2021, time.Month(3), 18, 16, 37, 0, 0, time.UTC),
 			},
-			XML:  createTestXml(),
+			returnErr: false,
+			name:      "Can verfy a response in the correc time interval",
+		},
+		{
+			testClock:  nil,
+			returnErr: true,
+			name:      "Using the real clock should give error because time has gone by",
 		},
 	}
-	response.doc = etree.NewDocument()
-	response.doc.ReadFromBytes(response.XML)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sp := createSPForTes()
+			sp.LoadIDPFromXMLFile("../fixtures/idp_metadata/testenv2_metadata.xml")
+			response := &Response{
+				inMessage: inMessage{
+					protocolMessage: protocolMessage{
+						SP:    sp,
+						IDP:   sp.IDP["http://localhost:8088"],
+						clock: tc.testClock,
+					},
+					XML: createTestXml(),
+				},
+			}
+			response.doc = etree.NewDocument()
+			response.doc.ReadFromBytes(response.XML)
 
-	requestId := "_56b83874b956b3140a8d6767072f546c"
-	err := response.validate(requestId)
-	if err != nil {
-		t.Error("Failed to validate response with error ", err)
+			requestId := "_56b83874b956b3140a8d6767072f546c"
+			err := response.validate(requestId)
+			if err != nil && !tc.returnErr {
+				t.Error("Failed to validate response with error ", err)
+			}
+
+			if err == nil && tc.returnErr {
+				t.Error("Verification should fail")
+			}
+		})
 	}
 }
 
