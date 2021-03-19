@@ -251,18 +251,9 @@ func (msg *inMessage) matchIncomingIDP() error {
 
 func (msg *inMessage) validateSignature(r *http.Request, param string) error {
 	if r.Method == "POST" {
-		err := xmlsec.Verify(msg.IDP.CertPEM(), msg.XML, xmlsec.SignatureOptions{
-			XMLID: []xmlsec.XMLIDOption{
-				{
-					ElementName:      msg.doc.Root().Tag,
-					ElementNamespace: "",
-					AttributeName:    "ID",
-				},
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("%s signature verification failed: %s",
-				msg.doc.Root().Tag, err.Error())
+		err2 := msg.validateSignatureForPost()
+		if err2 != nil {
+			return err2
 		}
 	} else if r.Method == "GET" { // GET
 		// In order to verify the signature we need to concatenate arguments
@@ -309,6 +300,23 @@ func (msg *inMessage) validateSignature(r *http.Request, param string) error {
 		return rsa.VerifyPKCS1v15(msg.IDP.Cert.PublicKey.(*rsa.PublicKey), hashAlg, h, sig)
 	}
 	return fmt.Errorf("Invalid HTTP method: %s", r.Method)
+}
+
+func (msg *inMessage) validateSignatureForPost() error {
+	err := xmlsec.Verify(msg.IDP.CertPEM(), msg.XML, xmlsec.SignatureOptions{
+		XMLID: []xmlsec.XMLIDOption{
+			{
+				ElementName:      msg.doc.Root().Tag,
+				ElementNamespace: "",
+				AttributeName:    "ID",
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("%s signature verification failed: %s",
+			msg.doc.Root().Tag, err.Error())
+	}
+	return nil
 }
 
 // ID returns the message ID.
