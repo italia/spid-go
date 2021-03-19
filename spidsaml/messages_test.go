@@ -1,28 +1,49 @@
 package spidsaml
 
 import (
+	"bytes"
 	"testing"
-	"time"
 )
 
 func TestInMessage_validateSignatureForPost(t *testing.T) {
-	testClock := &Clock{
-		instant: time.Date(2021, time.Month(3), 18, 16, 37, 0, 0, time.UTC),
+	firstBytesOfSignature := []byte("ocC")
+	cases := []struct {
+		xml       []byte
+		returnErr bool
+		name      string
+	}{
+		{
+			xml:       createTestXml(),
+			returnErr: false,
+			name:      "Can recognize a valid signed document",
+		},
+		{
+			xml:       bytes.Replace(createTestXml(), firstBytesOfSignature, []byte("xxx"), 1),
+			returnErr: true,
+			name:      "Can recognize an invalid signed document",
+		},
 	}
-	sp := createSPForTes()
-	sp.LoadIDPFromXMLFile("../fixtures/idp_metadata/testenv2_metadata.xml")
-	msg := inMessage{
-		protocolMessage: protocolMessage{
-			SP:    sp,
-			IDP:   sp.IDP["http://localhost:8088"],
-			clock: testClock,
-		}}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sp := createSPForTes()
+			sp.LoadIDPFromXMLFile("../fixtures/idp_metadata/testenv2_metadata.xml")
+			msg := inMessage{
+				protocolMessage: protocolMessage{
+					SP:  sp,
+					IDP: sp.IDP["http://localhost:8088"],
+				}}
 
-	msg.SetXML(createTestXml())
+			msg.SetXML(tc.xml)
 
-	err := msg.validateSignatureForPost()
+			err := msg.validateSignatureForPost()
 
-	if err != nil {
-		t.Error("Failed to validate signature with error ", err)
+			if err != nil && !tc.returnErr {
+				t.Error("Failed to validate response with error ", err)
+			}
+
+			if err == nil && tc.returnErr {
+				t.Error("Verification should fail")
+			}
+		})
 	}
 }
