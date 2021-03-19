@@ -251,10 +251,7 @@ func (msg *inMessage) matchIncomingIDP() error {
 
 func (msg *inMessage) validateSignature(r *http.Request, param string) error {
 	if r.Method == "POST" {
-		err2 := msg.validateSignatureForPost()
-		if err2 != nil {
-			return err2
-		}
+		return msg.validateSignatureForPost()
 	} else if r.Method == "GET" { // GET
 		// In order to verify the signature we need to concatenate arguments
 		// according to a predefined order (the request URI might be ordered
