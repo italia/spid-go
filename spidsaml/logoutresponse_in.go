@@ -32,7 +32,7 @@ func (sp *SP) ParseLogoutResponse(r *http.Request, inResponseTo string) (*Logout
 
 // validate performs validation on this message.
 func (logoutres *LogoutResponseIn) validate(r *http.Request, inResponseTo string) error {
-	err := logoutres.inMessage.validate()
+	err := logoutres.inMessage.matchIncomingIDP()
 	if err != nil {
 		return err
 	}

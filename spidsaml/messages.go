@@ -237,7 +237,7 @@ func (msg *inMessage) parse(r *http.Request, param string) error {
 	return msg.doc.ReadFromBytes(msg.XML)
 }
 
-func (msg *inMessage) validate() error {
+func (msg *inMessage) matchIncomingIDP() error {
 	var err error
 	msg.IDP, err = msg.SP.GetIDP(strings.TrimSpace(msg.Issuer()))
 	if err != nil {

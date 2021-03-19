@@ -37,7 +37,7 @@ func (sp *SP) ParseResponse(r *http.Request, inResponseTo string) (*Response, er
 
 // validate performs validation on this message, that is a response from an IDP to a login request
 func (response *Response) validate(inResponseTo string) error {
-	err := response.inMessage.validate()
+	err := response.inMessage.matchIncomingIDP()
 	if err != nil {
 		return err
 	}
