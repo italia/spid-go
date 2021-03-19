@@ -44,6 +44,12 @@ type inMessage struct {
 	RelayState string
 }
 
+func (msg *inMessage) SetXML(xml []byte) {
+	msg.XML = xml
+	msg.doc = etree.NewDocument()
+	msg.doc.ReadFromBytes(xml)
+}
+
 func generateMessageID() string {
 	id := make([]byte, 16)
 	if _, err := rand.Reader.Read(id); err != nil {
@@ -194,11 +200,12 @@ func (msg *outMessage) signatureTemplate() []byte {
 func (msg *inMessage) parse(r *http.Request, param string) error {
 	if r.Method == "POST" {
 		r.ParseForm()
-		var err error
-		msg.XML, err = base64.StdEncoding.DecodeString(r.Form.Get(param))
+		xml, err := base64.StdEncoding.DecodeString(r.Form.Get(param))
 		if err != nil {
 			return err
 		}
+
+		msg.SetXML(xml)
 
 		msg.RelayState = r.Form.Get("RelayState")
 	} else { // GET
@@ -215,10 +222,13 @@ func (msg *inMessage) parse(r *http.Request, param string) error {
 		b := bytes.NewReader(payload)
 		r2 := flate.NewReader(b)
 		defer r2.Close()
-		msg.XML, err = ioutil.ReadAll(r2)
+		var xml []byte
+		xml, err = ioutil.ReadAll(r2)
 		if err != nil {
 			return err
 		}
+
+		msg.SetXML(xml)
 
 		msg.RelayState = r.URL.Query().Get("RelayState")
 	}

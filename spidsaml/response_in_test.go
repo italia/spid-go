@@ -1,7 +1,6 @@
 package spidsaml
 
 import (
-	"github.com/beevik/etree"
 	"testing"
 	"time"
 )
@@ -46,11 +45,10 @@ func TestResponse_verify_response_from_IDP(t *testing.T) {
 						IDP:   sp.IDP["http://localhost:8088"],
 						clock: tc.testClock,
 					},
-					XML: createTestXml(),
 				},
 			}
-			response.doc = etree.NewDocument()
-			response.doc.ReadFromBytes(response.XML)
+
+			response.SetXML(createTestXml())
 
 			err := response.validate(tc.requestId)
 			if err != nil && !tc.returnErr {
