@@ -24,8 +24,8 @@ import (
 
 // protocolMessage is the base class for all SAML messages
 type protocolMessage struct {
-	SP  *SP
-	IDP *IDP
+	SP    *SP
+	IDP   *IDP
 	clock *Clock
 }
 
@@ -250,53 +250,61 @@ func (msg *inMessage) matchIncomingIDP() error {
 }
 
 func (msg *inMessage) validateSignature(r *http.Request, param string) error {
-	if r.Method == "POST" {
+	switch r.Method {
+	case "POST":
 		return msg.validateSignatureForPost()
-	} else if r.Method == "GET" { // GET
-		// In order to verify the signature we need to concatenate arguments
-		// according to a predefined order (the request URI might be ordered
-		// in a different way)
+
+	case "GET":
 		query := r.URL.Query()
-		var params []string
-		for _, key := range []string{param, "RelayState", "SigAlg"} {
-			if _, exists := query[key]; exists {
-				params = append(params, fmt.Sprintf("%s=%s",
-					key, url.QueryEscape(query.Get(key))))
-			}
-		}
+		return msg.validateSignatureForGet(param, query)
 
-		// Encode the payload
-		payload := []byte(strings.Join(params, "&"))
-
-		// Decode the signature from Base64
-		sig, err := base64.StdEncoding.DecodeString(query.Get("Signature"))
-		if err != nil {
-			return err
-		}
-
-		// Compute the hash of the payload according to the declared SigAlg
-		var h []byte
-		var hashAlg crypto.Hash
-		if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" {
-			h2 := sha256.Sum256(payload)
-			h = h2[:]
-			hashAlg = crypto.SHA256
-		} else if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha384" {
-			h2 := sha512.Sum384(payload)
-			h = h2[:]
-			hashAlg = crypto.SHA384
-		} else if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512" {
-			h2 := sha512.Sum512(payload)
-			h = h2[:]
-			hashAlg = crypto.SHA512
-		} else {
-			return fmt.Errorf("Unknown SigAlg: %s", query.Get("SigAlg"))
-		}
-
-		// Verify the signature
-		return rsa.VerifyPKCS1v15(msg.IDP.Cert.PublicKey.(*rsa.PublicKey), hashAlg, h, sig)
+	default:
+		return fmt.Errorf("Invalid HTTP method: %s", r.Method)
 	}
-	return fmt.Errorf("Invalid HTTP method: %s", r.Method)
+}
+
+func (msg *inMessage) validateSignatureForGet(param string, query url.Values) error {
+	// In order to verify the signature we need to concatenate arguments
+	// according to a predefined order (the request URI might be ordered
+	// in a different way)
+	var params []string
+	for _, key := range []string{param, "RelayState", "SigAlg"} {
+		if _, exists := query[key]; exists {
+			params = append(params, fmt.Sprintf("%s=%s",
+				key, url.QueryEscape(query.Get(key))))
+		}
+	}
+
+	// Encode the payload
+	payload := []byte(strings.Join(params, "&"))
+
+	// Decode the signature from Base64
+	sig, err := base64.StdEncoding.DecodeString(query.Get("Signature"))
+	if err != nil {
+		return err
+	}
+
+	// Compute the hash of the payload according to the declared SigAlg
+	var h []byte
+	var hashAlg crypto.Hash
+	if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" {
+		h2 := sha256.Sum256(payload)
+		h = h2[:]
+		hashAlg = crypto.SHA256
+	} else if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha384" {
+		h2 := sha512.Sum384(payload)
+		h = h2[:]
+		hashAlg = crypto.SHA384
+	} else if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512" {
+		h2 := sha512.Sum512(payload)
+		h = h2[:]
+		hashAlg = crypto.SHA512
+	} else {
+		return fmt.Errorf("Unknown SigAlg: %s", query.Get("SigAlg"))
+	}
+
+	// Verify the signature
+	return rsa.VerifyPKCS1v15(msg.IDP.Cert.PublicKey.(*rsa.PublicKey), hashAlg, h, sig)
 }
 
 func (msg *inMessage) validateSignatureForPost() error {
