@@ -44,10 +44,10 @@ type inMessage struct {
 	RelayState string
 }
 
-func (msg *inMessage) SetXML(xml []byte) {
+func (msg *inMessage) SetXML(xml []byte) error {
 	msg.XML = xml
 	msg.doc = etree.NewDocument()
-	msg.doc.ReadFromBytes(xml)
+	return msg.doc.ReadFromBytes(xml)
 }
 
 func generateMessageID() string {
@@ -198,43 +198,47 @@ func (msg *outMessage) signatureTemplate() []byte {
 }
 
 func (msg *inMessage) parse(r *http.Request, param string) error {
-	if r.Method == "POST" {
-		r.ParseForm()
-		xml, err := base64.StdEncoding.DecodeString(r.Form.Get(param))
-		if err != nil {
-			return err
-		}
+	var xml []byte
+	var err error
 
-		msg.SetXML(xml)
-
-		msg.RelayState = r.Form.Get("RelayState")
-	} else { // GET
-		samlEncoding := r.URL.Query().Get("SAMLEncoding")
-		if samlEncoding != "" && samlEncoding != "urn:oasis:names:tc:SAML:2.0:bindings:URL-Encoding:DEFLATE" {
-			return errors.New("Invalid SAMLEncoding")
-		}
-
-		payload, err := base64.StdEncoding.DecodeString(r.URL.Query().Get(param))
-		if err != nil {
-			return err
-		}
-
-		b := bytes.NewReader(payload)
-		r2 := flate.NewReader(b)
-		defer r2.Close()
-		var xml []byte
-		xml, err = ioutil.ReadAll(r2)
-		if err != nil {
-			return err
-		}
-
-		msg.SetXML(xml)
-
-		msg.RelayState = r.URL.Query().Get("RelayState")
+	switch r.Method {
+	case "POST":
+		xml, err = parsePost(r, param)
+	case "GET":
+		xml, err = parseGet(r, param)
+	default:
+		err = fmt.Errorf("Invalid HTTP method: %s", r.Method)
 	}
 
-	msg.doc = etree.NewDocument()
-	return msg.doc.ReadFromBytes(msg.XML)
+	if (err != nil) {
+		return err
+	}
+
+	msg.RelayState = r.URL.Query().Get("RelayState")
+
+	return msg.SetXML(xml)
+}
+
+func parseGet(r *http.Request, param string) ([]byte, error) {
+	samlEncoding := r.URL.Query().Get("SAMLEncoding")
+	if samlEncoding != "" && samlEncoding != "urn:oasis:names:tc:SAML:2.0:bindings:URL-Encoding:DEFLATE" {
+		return nil, errors.New("Invalid SAMLEncoding")
+	}
+
+	payload, err := base64.StdEncoding.DecodeString(r.URL.Query().Get(param))
+	if err != nil {
+		return nil, err
+	}
+
+	b := bytes.NewReader(payload)
+	r2 := flate.NewReader(b)
+	defer r2.Close()
+	return ioutil.ReadAll(r2)
+}
+
+func parsePost(r *http.Request, param string) ([]byte, error) {
+	r.ParseForm()
+	return base64.StdEncoding.DecodeString(r.Form.Get(param))
 }
 
 func (msg *inMessage) matchIncomingIDP() error {

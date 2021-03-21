@@ -47,3 +47,4 @@ func TestInMessage_validateSignatureForPost(t *testing.T) {
 		})
 	}
 }
+
