@@ -18,7 +18,7 @@ import (
 type IDP struct {
 	XML        string
 	EntityID   string
-	Cert       *x509.Certificate
+	Certs      []*x509.Certificate
 	SSOURLs    map[SAMLBinding]string
 	SLOReqURLs map[SAMLBinding]string
 	SLOResURLs map[SAMLBinding]string
@@ -58,24 +58,29 @@ func NewIDPFromXML(xml []byte) *IDP {
 	}
 
 	// certificate
-	cert := doc.FindElement("/EntityDescriptor/IDPSSODescriptor/KeyDescriptor[@use='signing']/KeyInfo/X509Data/X509Certificate")
-	if cert == nil {
+	certs := doc.FindElements("/EntityDescriptor/IDPSSODescriptor/KeyDescriptor[@use='signing']/KeyInfo/X509Data/X509Certificate")
+	nrOfCertificates := len(certs)
+	if nrOfCertificates == 0 {
 		panic(fmt.Sprintf("Could not read certificate for IdP with entityID: %v\n", idp.EntityID))
 	}
 
-	// remove whitespace
-	certText := cert.Text()
-	certText = strings.Replace(certText, " ", "", -1)
-	certText = strings.Replace(certText, "\n", "", -1)
-	certText = strings.Replace(certText, "\t", "", -1)
+	idp.Certs = make([]*x509.Certificate, nrOfCertificates)
 
-	data, err := base64.StdEncoding.DecodeString(certText)
-	if err != nil {
-		panic(fmt.Sprintf("failed to decode base64 certificate: %s", err))
-	}
-	idp.Cert, err = x509.ParseCertificate(data)
-	if err != nil {
-		panic("failed to parse certificate: " + err.Error())
+	for i, cert := range certs  {
+		// remove whitespace
+		certText := cert.Text()
+		certText = strings.Replace(certText, " ", "", -1)
+		certText = strings.Replace(certText, "\n", "", -1)
+		certText = strings.Replace(certText, "\t", "", -1)
+
+		data, err := base64.StdEncoding.DecodeString(certText)
+		if err != nil {
+			panic(fmt.Sprintf("failed to decode base64 certificate: %s", err))
+		}
+		idp.Certs[i], err = x509.ParseCertificate(data)
+		if err != nil {
+			panic("failed to parse certificate: " + err.Error())
+		}
 	}
 
 	return idp
@@ -137,6 +142,11 @@ func (sp *SP) LoadIDPMetadata(dir string) error {
 }
 
 // CertPEM returns the IdP certificate in PEM format.
-func (idp *IDP) CertPEM() []byte {
-	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: idp.Cert.Raw})
+func (idp *IDP) CertPEM() [][]byte {
+	nrOfCertificates := len(idp.Certs)
+	result := make([][]byte, nrOfCertificates)
+	for i, cert := range idp.Certs {
+		result[i] = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+	}
+	return result
 }

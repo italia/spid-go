@@ -79,20 +79,25 @@ func (response *Response) validate(inResponseTo string) error {
 				response.AssertionInResponseTo(), inResponseTo)
 		}
 
-		err = xmlsec.Verify(response.IDP.CertPEM(), response.XML, xmlsec.SignatureOptions{
-			XMLID: []xmlsec.XMLIDOption{
-				{
-					ElementName:      "Assertion",
-					ElementNamespace: "",
-					AttributeName:    "ID",
+		for _, cert := range response.IDP.CertPEM() {
+			err = xmlsec.Verify(cert, response.XML, xmlsec.SignatureOptions{
+				XMLID: []xmlsec.XMLIDOption{
+					{
+						ElementName:      "Assertion",
+						ElementNamespace: "",
+						AttributeName:    "ID",
+					},
+					{
+						ElementName:      "Response",
+						ElementNamespace: "",
+						AttributeName:    "ID",
+					},
 				},
-				{
-					ElementName:      "Response",
-					ElementNamespace: "",
-					AttributeName:    "ID",
-				},
-			},
-		})
+			})
+			if (err == nil) {
+				break;
+			}
+		}
 		if err != nil {
 			return fmt.Errorf("Signature verification failed: %s", err.Error())
 		}

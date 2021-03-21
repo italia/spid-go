@@ -308,24 +308,34 @@ func (msg *inMessage) validateSignatureForGet(param string, query url.Values) er
 	}
 
 	// Verify the signature
-	return rsa.VerifyPKCS1v15(msg.IDP.Cert.PublicKey.(*rsa.PublicKey), hashAlg, h, sig)
+	for _, cert := range msg.IDP.Certs {
+		err = rsa.VerifyPKCS1v15(cert.PublicKey.(*rsa.PublicKey), hashAlg, h, sig)
+		if (err == nil) {
+			return nil
+		}
+	}
+
+	return err
 }
 
 func (msg *inMessage) validateSignatureForPost() error {
-	err := xmlsec.Verify(msg.IDP.CertPEM(), msg.XML, xmlsec.SignatureOptions{
-		XMLID: []xmlsec.XMLIDOption{
-			{
-				ElementName:      msg.doc.Root().Tag,
-				ElementNamespace: "",
-				AttributeName:    "ID",
+	var err error
+	for _, cert := range msg.IDP.CertPEM() {
+		err = xmlsec.Verify(cert, msg.XML, xmlsec.SignatureOptions{
+			XMLID: []xmlsec.XMLIDOption{
+				{
+					ElementName:      msg.doc.Root().Tag,
+					ElementNamespace: "",
+					AttributeName:    "ID",
+				},
 			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("%s signature verification failed: %s",
-			msg.doc.Root().Tag, err.Error())
+		})
+		if err == nil {
+			return nil
+		}
 	}
-	return nil
+	return fmt.Errorf("%s signature verification failed: %s",
+		msg.doc.Root().Tag, err.Error())
 }
 
 // ID returns the message ID.

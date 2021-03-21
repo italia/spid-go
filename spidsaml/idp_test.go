@@ -64,3 +64,17 @@ func TestSP_LoadIDPMetadata(t *testing.T) {
 		}
 	}
 }
+
+func TestSP_AnIDPCanHaveMultipleCertificates(t *testing.T) {
+	sp := &SP{
+	}
+
+	if err := sp.LoadIDPFromXMLFile("../idp_metadata/aruba.xml"); err != nil {
+		t.Error(err)
+	}
+
+	nrOfCertificates := len(sp.IDP["https://loginspid.aruba.it"].Certs)
+	if nrOfCertificates != 2 {
+		t.Error("Expected 2 cerificates, but got ", nrOfCertificates)
+	}
+}
