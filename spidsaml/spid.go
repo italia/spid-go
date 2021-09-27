@@ -26,6 +26,13 @@ const (
 	HTTPPost     SAMLBinding = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
 )
 
+// Organization adds infos about SP
+type SPOrganization struct {
+	OrganizationName        string
+	OrganizationDisplayName string
+	OrganizationURL         string
+}
+
 // SP represents our Service Provider
 type SP struct {
 	EntityID                   string
@@ -37,6 +44,7 @@ type SP struct {
 	IDP                        map[string]*IDP
 	_cert                      *x509.Certificate
 	_key                       *rsa.PrivateKey
+	Organization               SPOrganization
 }
 
 // Session represents an active SPID session.
@@ -109,52 +117,58 @@ func (sp *SP) GetIDP(entityID string) (*IDP, error) {
 
 // Metadata generates XML metadata of this Service Provider.
 func (sp *SP) Metadata() string {
-	const tmpl = `<?xml version="1.0"?> 
-<md:EntityDescriptor 
-    xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"  
-    xmlns:ds="http://www.w3.org/2000/09/xmldsig#"  
-    entityID="{{.EntityID}}"  
-    ID="_681a637-6cd4-434f-92c3-4fed720b2ad8"> 
-     
-    <md:SPSSODescriptor  
-        protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"  
-        AuthnRequestsSigned="true"  
-        WantAssertionsSigned="true"> 
-        
-        <md:KeyDescriptor use="signing"> 
-            <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#"> 
-                <ds:X509Data> 
-                    <ds:X509Certificate>{{ .Cert }}</ds:X509Certificate> 
-                </ds:X509Data> 
-            </ds:KeyInfo> 
+	const tmpl = `<?xml version="1.0"?>
+<md:EntityDescriptor
+    xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+    xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+    entityID="{{.EntityID}}"
+    ID="_681a637-6cd4-434f-92c3-4fed720b2ad8">
+
+    <md:SPSSODescriptor
+        protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"
+        AuthnRequestsSigned="true"
+        WantAssertionsSigned="true">
+
+        <md:KeyDescriptor use="signing">
+            <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+                <ds:X509Data>
+                    <ds:X509Certificate>{{ .Cert }}</ds:X509Certificate>
+                </ds:X509Data>
+            </ds:KeyInfo>
         </md:KeyDescriptor>
-        
+
         {{ range $url, $binding := .SingleLogoutServices }}
-        <md:SingleLogoutService 
+        <md:SingleLogoutService
             Binding="{{ $binding }}"
-            Location="{{ $url }}" /> 
+            Location="{{ $url }}" />
         {{ end }}
-        
-        <md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:transient</md:NameIDFormat> 
+
+        <md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:transient</md:NameIDFormat>
 
         {{ range $index, $url := .AssertionConsumerServices }}
-        <md:AssertionConsumerService  
-            Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"  
-            Location="{{ $url }}"  
-            index="{{ $index }}"  
-            isDefault="{{ if gt $index 0 }}false{{ else }}true{{ end }}" /> 
+        <md:AssertionConsumerService
+            Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+            Location="{{ $url }}"
+            index="{{ $index }}"
+            isDefault="{{ if gt $index 0 }}false{{ else }}true{{ end }}" />
         {{ end }}
-        
+
         {{ range $index, $attcs := .AttributeConsumingServices }}
-        <md:AttributeConsumingService index="{{ $index }}"> 
+        <md:AttributeConsumingService index="{{ $index }}">
             <md:ServiceName xml:lang="it">{{ $attcs.ServiceName }}</md:ServiceName>
             {{ range $attr := $attcs.Attributes }}
-            <md:RequestedAttribute Name="{{ $attr }}" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/> 
+            <md:RequestedAttribute Name="{{ $attr }}" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
             {{ end }}
         </md:AttributeConsumingService>
         {{ end }}
 
-    </md:SPSSODescriptor> 
+    </md:SPSSODescriptor>
+
+    <md:Organization>
+        <md:OrganizationName xml:lang="it">{{ .Organization.OrganizationName }}</md:OrganizationName>
+        <md:OrganizationDisplayName xml:lang="it">{{ .Organization.OrganizationDisplayName }}</md:OrganizationDisplayName>
+        <md:OrganizationURL xml:lang="it">{{ .Organization.OrganizationURL }}</md:OrganizationURL>
+    </md:Organization>
 
 </md:EntityDescriptor>
 `
