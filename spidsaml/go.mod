@@ -1,4 +1,4 @@
-module github.com/italia/spid-go/spidsaml
+module github.com/nicolasvac/spid-go/spidsaml
 
 require (
 	github.com/beevik/etree v1.0.1
