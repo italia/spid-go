@@ -26,11 +26,24 @@ const (
 	HTTPPost     SAMLBinding = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
 )
 
-// Organization adds infos about SP
+// SPOrganization Organization adds infos about SP
 type SPOrganization struct {
 	OrganizationName        string
 	OrganizationDisplayName string
 	OrganizationURL         string
+}
+
+// SPContactPerson ContactPerson metadata about sp full
+type SPContactPerson struct {
+	ContactType      string
+	EntityType       string
+	IpaCode          string
+	VatNumber        string
+	FiscalCode       string
+	Company          string
+	EmailAddress     string
+	TelephoneNumber  string
+	IsFullAggregator bool
 }
 
 // SP represents our Service Provider
@@ -45,6 +58,7 @@ type SP struct {
 	_cert                      *x509.Certificate
 	_key                       *rsa.PrivateKey
 	Organization               SPOrganization
+	ContactPersons             []SPContactPerson
 }
 
 // Session represents an active SPID session.
@@ -169,6 +183,22 @@ func (sp *SP) Metadata() string {
         <md:OrganizationDisplayName xml:lang="it">{{ .Organization.OrganizationDisplayName }}</md:OrganizationDisplayName>
         <md:OrganizationURL xml:lang="it">{{ .Organization.OrganizationURL }}</md:OrganizationURL>
     </md:Organization>
+
+	{{ range $index, $contact := .ContactPersons }}
+	<md:ContactPerson contactType="{{ $contact.ContactType }}" spid:entityType="{{ $contact.EntityType }}"> 
+        <md:Extensions> 
+            <spid:IPACode>{{ $contact.IpaCode }}</spid:IPACode> 
+            <spid:VATNumber>{{ $contact.VatNumber }}</spid:VATNumber> 
+            <spid:FiscalCode>{{ $contact.FiscalCode }}</spid:FiscalCode>
+			{{ if $contact.IsFullAggregator }}
+            <spid:PublicServicesFullOperator/>
+			{{ end }}
+        </md:Extensions> 
+        <md:Company>{{ $contact.Company }}</md:Company> 
+        <md:EmailAddress>{{ $contact.Email }}</md:EmailAddress> 
+        <md:TelephoneNumber>{{ $contact.TelephoneNumber }}</md:TelephoneNumber> 
+    </md:ContactPerson>
+	{{ end }}
 
 </md:EntityDescriptor>
 `
