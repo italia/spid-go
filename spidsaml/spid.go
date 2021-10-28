@@ -201,7 +201,7 @@ func (sp *SP) Metadata() string {
 			{{ end }}
         </md:Extensions> 
         <md:Company>{{ $contact.Company }}</md:Company> 
-        <md:EmailAddress>{{ $contact.Email }}</md:EmailAddress> 
+        <md:EmailAddress>{{ $contact.EmailAddress }}</md:EmailAddress> 
         <md:TelephoneNumber>{{ $contact.TelephoneNumber }}</md:TelephoneNumber> 
     </md:ContactPerson>
 	{{ end }}
