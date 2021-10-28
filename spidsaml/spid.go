@@ -187,13 +187,13 @@ func (sp *SP) Metadata() string {
 	{{ range $index, $contact := .ContactPersons }}
 	<md:ContactPerson contactType="{{ $contact.ContactType }}" spid:entityType="{{ $contact.EntityType }}"> 
 		<md:Extensions> 
-			{{ if not eq $contact.IpaCode nil && not eq $contact.IpaCode "" }}
+			{{ if ne $contact.IpaCode nil and ne $contact.IpaCode "" }}
 			<spid:IPACode>{{ $contact.IpaCode }}</spid:IPACode>
 			{{ end }}
-			{{ if not eq $contact.VatNumber nil && not eq $contact.VatNumber "" }}
+			{{ if ne $contact.VatNumber nil and ne $contact.VatNumber "" }}
 			<spid:VATNumber>{{ $contact.VatNumber }}</spid:VATNumber>
 			{{ end }}
-			{{ if not eq $contact.FiscalCode nil && not eq $contact.FiscalCode "" }}
+			{{ if ne $contact.FiscalCode nil and ne $contact.FiscalCode "" }}
             <spid:FiscalCode>{{ $contact.FiscalCode }}</spid:FiscalCode>
 			{{ end }}
 			{{ if $contact.IsFullAggregator }}
