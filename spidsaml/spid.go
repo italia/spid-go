@@ -2,12 +2,14 @@ package spidsaml
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"io/ioutil"
+	"math/big"
 	"text/template"
 )
 
@@ -130,6 +132,20 @@ func (sp *SP) GetIDP(entityID string) (*IDP, error) {
 	return nil, errors.New("IdP not found")
 }
 
+func (sp *SP) GenerateRandomRequestID() string {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	ret := make([]byte, 43)
+	for i := 0; i < 43; i++ {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		if err != nil {
+			return ""
+		}
+		ret[i] = letters[num.Int64()]
+	}
+
+	return string(ret)
+}
+
 // Metadata generates XML metadata of this Service Provider.
 func (sp *SP) Metadata() string {
 	const tmpl = `<?xml version="1.0" encoding="UTF-8"?>
@@ -138,8 +154,8 @@ func (sp *SP) Metadata() string {
     xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
 	xmlns:spid="https://spid.gov.it/saml-extensions"
 	xmlns:fpa="https://spid.gov.it/invoicing-extensions"
-    entityID="{{.EntityID}}"
-    ID="_681a637-6cd4-434f-92c3-4fed720b2ad8">
+    entityID="{{ .EntityID }}"
+    ID="{{ .RandomRequestID }}">
 
     <md:SPSSODescriptor
         protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"
@@ -216,10 +232,12 @@ func (sp *SP) Metadata() string {
 `
 	aux := struct {
 		*SP
-		Cert string
+		Cert            string
+		RandomRequestID string
 	}{
 		sp,
 		base64.StdEncoding.EncodeToString(sp.Cert().Raw),
+		sp.GenerateRandomRequestID(),
 	}
 
 	t := template.Must(template.New("metadata").Parse(tmpl))
