@@ -136,6 +136,7 @@ func (sp *SP) Metadata() string {
     xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
     xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
 	xmlns:spid="https://spid.gov.it/saml-extensions"
+	xmlns:fpa="https://spid.gov.it/invoicing-extensions"
     entityID="{{.EntityID}}"
     ID="_681a637-6cd4-434f-92c3-4fed720b2ad8">
 
