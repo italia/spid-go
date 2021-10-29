@@ -35,15 +35,16 @@ type SPOrganization struct {
 
 // SPContactPerson ContactPerson metadata about sp full
 type SPContactPerson struct {
-	ContactType      string
-	EntityType       string
-	IpaCode          string
-	VatNumber        string
-	FiscalCode       string
-	Company          string
-	EmailAddress     string
-	TelephoneNumber  string
-	IsFullAggregator bool
+	ContactType             string
+	EntityType              string
+	IpaCode                 string
+	VatNumber               string
+	FiscalCode              string
+	Company                 string
+	EmailAddress            string
+	TelephoneNumber         string
+	IsPrivateFullAggregator bool
+	IsPublicFullAggregator  bool
 }
 
 // SP represents our Service Provider
@@ -198,8 +199,11 @@ func (sp *SP) Metadata() string {
 			{{ if ne $contact.FiscalCode "" }}
             <spid:FiscalCode>{{ $contact.FiscalCode }}</spid:FiscalCode>
 			{{ end }}
-			{{ if $contact.IsFullAggregator }}
+			{{ if $contact.IsPublicFullAggregator }}
             <spid:PublicServicesFullOperator/>
+			{{ end }}
+			{{ if $contact.IsPrivateFullAggregator }}
+            <spid:PrivateServicesFullAggregator/>
 			{{ end }}
         </md:Extensions> 
         <md:Company>{{ $contact.Company }}</md:Company> 
