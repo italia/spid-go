@@ -145,7 +145,7 @@ func (sp *SP) GenerateRandomRequestID() string {
 		ret[i] = letters[num.Int64()]
 	}
 
-	return string(ret)
+	return "_" + string(ret)
 }
 
 // Metadata generates XML metadata of this Service Provider.
@@ -163,7 +163,7 @@ func (sp *SP) Metadata() string {
         <ds:SignedInfo>
             <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
             <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" />
-            <ds:Reference URI="{{ .RandomRequestID }}">
+            <ds:Reference URI="#{{ .RandomRequestID }}">
                 <ds:Transforms>
                     <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
                     <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
