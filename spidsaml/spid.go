@@ -252,20 +252,21 @@ func (sp *SP) Metadata() string {
 		return ""
 	}
 
+	// Add the contact persons to the XML
+	completeXML, err := addContactPersons(metadata.String(), sp.ContactPersons)
+
+	if err != nil {
+		return ""
+	}
+
 	// Sign the XML
-	signer, err := signedxml.NewSigner(metadata.String())
+	signer, err := signedxml.NewSigner(completeXML)
 
 	if err != nil {
 		return ""
 	}
 
-	completeXML, err := signer.Sign(sp.Key())
-
-	if err != nil {
-		return ""
-	}
-
-	completeXML, err = addContactPersons(completeXML, sp.ContactPersons)
+	completeXML, err = signer.Sign(sp.Key())
 
 	if err != nil {
 		return ""
@@ -290,6 +291,11 @@ func addContactPersons(signedXML string, persons []SPContactPerson) (string, err
 		// Add the specified contact type
 		contactPersonXML.CreateAttr("contactType", contactPerson.ContactType)
 
+		// Add extensions data
+		contactPersonExtensionsXML := contactPersonXML.CreateElement("md:Extensions")
+
+		addContactPersonExtensions(contactPersonExtensionsXML, contactPerson.Extensions)
+
 		// Add company data
 		if contactPerson.Company != "" {
 			contactPersonXML.CreateElement("md:Company").CreateText(contactPerson.Company)
@@ -304,11 +310,6 @@ func addContactPersons(signedXML string, persons []SPContactPerson) (string, err
 		if contactPerson.TelephoneNumber != "" {
 			contactPersonXML.CreateElement("md:TelephoneNumber").CreateText(contactPerson.TelephoneNumber)
 		}
-
-		// Add extensions data
-		contactPersonExtensionsXML := contactPersonXML.CreateElement("md:Extensions")
-
-		addContactPersonExtensions(contactPersonExtensionsXML, contactPerson.Extensions)
 	}
 
 	return xmlDoc.WriteToString()
