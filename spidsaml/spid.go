@@ -188,6 +188,7 @@ func (sp *SP) Metadata() string {
         <md:KeyDescriptor use="signing">
             <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
                 <ds:X509Data>
+					<ds:X509SubjectName>{{ .CertSubject }}</ds:X509SubjectName>
                     <ds:X509Certificate>{{ .Cert }}</ds:X509Certificate>
                 </ds:X509Data>
             </ds:KeyInfo>
@@ -257,23 +258,23 @@ func (sp *SP) Metadata() string {
 		*SP
 		Cert            string
 		RandomRequestID string
+		CertSubject     string
 	}{
 		sp,
 		base64.StdEncoding.EncodeToString(sp.Cert().Raw),
-		sp.GenerateRandomRequestID(), // Generate a random ID for each request
+		sp.GenerateRandomRequestID(), // Generate a random ID for each request,
+		sp.Cert().Subject.String(),
 	}
 
 	t := template.Must(template.New("metadata").Parse(tmpl))
 	var metadata bytes.Buffer
 
 	// Parse now the template
-
 	if t.Execute(&metadata, aux) != nil {
 		return ""
 	}
 
 	// Sign the XML
-
 	signer, err := signedxml.NewSigner(metadata.String())
 
 	if err != nil {
