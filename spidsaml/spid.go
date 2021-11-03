@@ -280,7 +280,7 @@ func (sp *SP) Metadata() string {
 		return ""
 	}
 
-	completeXML, err := signer.Sign(sp._key)
+	completeXML, err := signer.Sign(sp.Key())
 
 	if err != nil {
 		return ""
