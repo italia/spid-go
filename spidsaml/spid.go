@@ -48,7 +48,7 @@ type SPContactPerson struct {
 	EmailAddress            string
 	TelephoneNumber         string
 	IsPrivate               bool
-	isPublic                bool
+	IsPublic                bool
 	IsPrivateFullAggregator bool
 	IsPublicFullAggregator  bool
 }
@@ -244,7 +244,7 @@ func (sp *SP) Metadata() string {
 			{{ if $contact.IsPrivate }}
             <spid:Private/>
 			{{ end }}
-			{{ if $contact.isPublic }}
+			{{ if $contact.IsPublic }}
             <spid:Public/>
 			{{ end }}
 			{{ if $contact.IsPublicFullAggregator }}
