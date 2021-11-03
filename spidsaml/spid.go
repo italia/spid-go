@@ -11,6 +11,8 @@ import (
 	"io/ioutil"
 	"math/big"
 	"text/template"
+
+	"github.com/ma314smith/signedxml"
 )
 
 // AttributeConsumingService defines, well, an AttributeConsumingService.
@@ -157,6 +159,27 @@ func (sp *SP) Metadata() string {
     entityID="{{ .EntityID }}"
     ID="{{ .RandomRequestID }}">
 
+	<ds:Signature>
+        <ds:SignedInfo>
+            <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
+            <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" />
+            <ds:Reference URI="{{ .RandomRequestID }}">
+                <ds:Transforms>
+                    <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+                    <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
+                </ds:Transforms>
+                <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" />
+                <ds:DigestValue></ds:DigestValue>
+            </ds:Reference>
+        </ds:SignedInfo>
+        <ds:SignatureValue></ds:SignatureValue>
+        <ds:KeyInfo>
+            <ds:X509Data>
+                <ds:X509Certificate>{{ .Cert }}</ds:X509Certificate>
+            </ds:X509Data>
+        </ds:KeyInfo>
+    </ds:Signature>
+
     <md:SPSSODescriptor
         protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"
         AuthnRequestsSigned="true"
@@ -237,12 +260,31 @@ func (sp *SP) Metadata() string {
 	}{
 		sp,
 		base64.StdEncoding.EncodeToString(sp.Cert().Raw),
-		sp.GenerateRandomRequestID(),
+		sp.GenerateRandomRequestID(), // Generate a random ID for each request
 	}
 
 	t := template.Must(template.New("metadata").Parse(tmpl))
 	var metadata bytes.Buffer
-	t.Execute(&metadata, aux)
 
-	return metadata.String()
+	// Parse now the template
+
+	if t.Execute(&metadata, aux) != nil {
+		return ""
+	}
+
+	// Sign the XML
+
+	signer, err := signedxml.NewSigner(metadata.String())
+
+	if err != nil {
+		return ""
+	}
+
+	completeXML, err := signer.Sign(sp._key)
+
+	if err != nil {
+		return ""
+	}
+
+	return completeXML
 }
