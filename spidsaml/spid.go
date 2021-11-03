@@ -47,6 +47,8 @@ type SPContactPerson struct {
 	Company                 string
 	EmailAddress            string
 	TelephoneNumber         string
+	IsPrivate               bool
+	isPublic                bool
 	IsPrivateFullAggregator bool
 	IsPublicFullAggregator  bool
 }
@@ -238,6 +240,12 @@ func (sp *SP) Metadata() string {
 			{{ end }}
 			{{ if ne $contact.FiscalCode "" }}
             <spid:FiscalCode>{{ $contact.FiscalCode }}</spid:FiscalCode>
+			{{ end }}
+			{{ if $contact.IsPrivate }}
+            <spid:Private/>
+			{{ end }}
+			{{ if $contact.isPublic }}
+            <spid:Public/>
 			{{ end }}
 			{{ if $contact.IsPublicFullAggregator }}
             <spid:PublicServicesFullOperator/>
