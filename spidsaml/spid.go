@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
+	"github.com/beevik/etree"
 	"io/ioutil"
 	"math/big"
 	"text/template"
@@ -37,20 +38,20 @@ type SPOrganization struct {
 	OrganizationURL         string
 }
 
-// SPContactPerson ContactPerson metadata about sp full
+// SPContactPerson ContactPerson metadata
 type SPContactPerson struct {
-	ContactType             string
-	EntityType              string
-	IpaCode                 string
-	VatNumber               string
-	FiscalCode              string
-	Company                 string
-	EmailAddress            string
-	TelephoneNumber         string
-	IsPrivate               bool
-	IsPublic                bool
-	IsPrivateFullAggregator bool
-	IsPublicFullAggregator  bool
+	ContactType     string
+	Company         string
+	EmailAddress    string
+	TelephoneNumber string
+	Extensions      []SPContactPersonExtension
+}
+
+// SPContactPersonExtension extensions for contact person
+type SPContactPersonExtension struct {
+	Tag        string
+	Value      string
+	Extensions []SPContactPersonExtension
 }
 
 // SP represents our Service Provider
@@ -229,37 +230,6 @@ func (sp *SP) Metadata() string {
         <md:OrganizationURL xml:lang="it">{{ .Organization.OrganizationURL }}</md:OrganizationURL>
     </md:Organization>
 
-	{{ range $index, $contact := .ContactPersons }}
-	<md:ContactPerson contactType="{{ $contact.ContactType }}" spid:entityType="{{ $contact.EntityType }}"> 
-		<md:Extensions> 
-			{{ if ne $contact.IpaCode "" }}
-			<spid:IPACode>{{ $contact.IpaCode }}</spid:IPACode>
-			{{ end }}
-			{{ if ne $contact.VatNumber "" }}
-			<spid:VATNumber>{{ $contact.VatNumber }}</spid:VATNumber>
-			{{ end }}
-			{{ if ne $contact.FiscalCode "" }}
-            <spid:FiscalCode>{{ $contact.FiscalCode }}</spid:FiscalCode>
-			{{ end }}
-			{{ if $contact.IsPrivate }}
-            <spid:Private/>
-			{{ end }}
-			{{ if $contact.IsPublic }}
-            <spid:Public/>
-			{{ end }}
-			{{ if $contact.IsPublicFullAggregator }}
-            <spid:PublicServicesFullOperator/>
-			{{ end }}
-			{{ if $contact.IsPrivateFullAggregator }}
-            <spid:PrivateServicesFullAggregator/>
-			{{ end }}
-        </md:Extensions> 
-        <md:Company>{{ $contact.Company }}</md:Company> 
-        <md:EmailAddress>{{ $contact.EmailAddress }}</md:EmailAddress> 
-        <md:TelephoneNumber>{{ $contact.TelephoneNumber }}</md:TelephoneNumber> 
-    </md:ContactPerson>
-	{{ end }}
-
 </md:EntityDescriptor>
 `
 	aux := struct {
@@ -295,5 +265,66 @@ func (sp *SP) Metadata() string {
 		return ""
 	}
 
+	completeXML, err = addContactPersons(completeXML, sp.ContactPersons)
+
+	if err != nil {
+		return ""
+	}
+
 	return completeXML
+}
+
+func addContactPersons(signedXML string, persons []SPContactPerson) (string, error) {
+	xmlDoc := etree.NewDocument()
+
+	if xmlDoc.ReadFromString(signedXML) != nil {
+		return "", nil
+	}
+
+	// Get the basic entity descriptor element
+	entityDescriptor := xmlDoc.FindElement("EntityDescriptor")
+
+	for _, contactPerson := range persons {
+		// Create basic contact person element
+		contactPersonXML := entityDescriptor.CreateElement("md:ContactPerson")
+		// Add the specified contact type
+		contactPersonXML.CreateAttr("contactType", contactPerson.ContactType)
+
+		// Add company data
+		if contactPerson.Company != "" {
+			contactPersonXML.CreateElement("md:Company").CreateText(contactPerson.Company)
+		}
+
+		// Add email address data
+		if contactPerson.EmailAddress != "" {
+			contactPersonXML.CreateElement("md:EmailAddress").CreateText(contactPerson.EmailAddress)
+		}
+
+		// Add telephone number data
+		if contactPerson.TelephoneNumber != "" {
+			contactPersonXML.CreateElement("md:TelephoneNumber").CreateText(contactPerson.TelephoneNumber)
+		}
+
+		// Add extensions data
+		contactPersonExtensionsXML := contactPersonXML.CreateElement("md:Extensions")
+
+		addContactPersonExtensions(contactPersonExtensionsXML, contactPerson.Extensions)
+	}
+
+	return xmlDoc.WriteToString()
+}
+
+func addContactPersonExtensions(xml *etree.Element, extensions []SPContactPersonExtension) {
+
+	for _, extension := range extensions {
+		xmlElement := xml.CreateElement(extension.Tag)
+
+		if extension.Value != "" {
+			xmlElement.CreateText(extension.Value)
+		}
+
+		if len(extension.Extensions) > 0 {
+			addContactPersonExtensions(xmlElement, extension.Extensions)
+		}
+	}
 }
