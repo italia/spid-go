@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"github.com/ma314smith/signedxml"
 	"io/ioutil"
 	"log"
 	"os"
@@ -34,27 +33,6 @@ func NewIDPFromXML(xml []byte) *IDP {
 
 	idp := new(IDP)
 	idp.EntityID = doc.FindElement("/EntityDescriptor").SelectAttr("entityID").Value
-
-	// Check if there is a signature present, and in case is present
-	// use the xml signature validator.
-	if doc.FindElement("/EntityDescriptor/Signature/SignedInfo") != nil {
-		// Convert XML to a readable string
-		xmlString, err := doc.WriteToString()
-
-		if err != nil {
-			panic("Unable to convert IDP XML to String.")
-		}
-
-		// Initialize the validator
-		validator, err := signedxml.NewValidator(xmlString)
-
-		// Check if signature is valid
-		_, err = validator.ValidateReferences()
-
-		if err != nil {
-			panic(fmt.Sprintf("Unable to verify IDP (%s) Signature. Complete error: %s", idp.EntityID, err))
-		}
-	}
 
 	// SingleSignOnService
 	idp.SSOURLs = make(map[SAMLBinding]string)
