@@ -70,7 +70,7 @@ func (msg *outMessage) RedirectURL(baseurl string, xml []byte, param string) str
 	w := &bytes.Buffer{}
 	w1 := base64.NewEncoder(base64.StdEncoding, w)
 	w2, _ := flate.NewWriter(w1, 9)
-	w2.Write([]byte(xml))
+	w2.Write(xml)
 	w2.Close()
 	w1.Close()
 
