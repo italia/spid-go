@@ -43,7 +43,7 @@ func NewIDPFromXML(xml []byte) *IDP {
 		_, err = validator.ValidateReferences()
 
 		if err != nil {
-			panic(fmt.Sprintf("Unable to verify IDP (%s) Signature.", idp.EntityID))
+			panic(fmt.Sprintf("Unable to verify IDP (%s) Signature. Complete error: %s", idp.EntityID, err))
 		}
 	}
 
