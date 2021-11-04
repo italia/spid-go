@@ -38,8 +38,17 @@ func NewIDPFromXML(xml []byte) *IDP {
 	// Check if there is a signature present, and in case is present
 	// use the xml signature validator.
 	if doc.FindElement("/EntityDescriptor/Signature/SignedInfo") != nil {
-		validator, err := signedxml.NewValidator(string(xml))
+		// Convert XML to a readable string
+		xmlString, err := doc.WriteToString()
 
+		if err != nil {
+			panic("Unable to convert IDP XML to String.")
+		}
+
+		// Initialize the validator
+		validator, err := signedxml.NewValidator(xmlString)
+
+		// Check if signature is valid
 		_, err = validator.ValidateReferences()
 
 		if err != nil {
