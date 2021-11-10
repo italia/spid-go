@@ -168,7 +168,7 @@ func (sp *SP) GenerateRandomRequestID() string {
 }
 
 // Metadata generates XML metadata of this Service Provider.
-func (sp *SP) Metadata() string {
+func (sp *SP) Metadata(enableSign bool) string {
 	const tmpl = `<?xml version="1.0" encoding="UTF-8"?>
 <md:EntityDescriptor
     xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
@@ -273,6 +273,11 @@ func (sp *SP) Metadata() string {
 
 	if err != nil {
 		return ""
+	}
+
+	// If the sign is not enabled, just exit here.
+	if !enableSign {
+		return completeXML
 	}
 
 	// Sign the XML
