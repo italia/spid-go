@@ -75,6 +75,8 @@ func NewIDPFromXML(xml []byte) *IDP {
 		panic("failed to parse certificate: " + err.Error())
 	}
 
+	idp.XML, _ = doc.WriteToString()
+
 	return idp
 }
 
