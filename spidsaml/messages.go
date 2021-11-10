@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/beevik/etree"
-	xmlsec "github.com/crewjam/go-xmlsec"
+	"github.com/crewjam/go-xmlsec"
 )
 
 // protocolMessage is the base class for all SAML messages
@@ -41,16 +41,6 @@ type inMessage struct {
 	XML        []byte
 	doc        *etree.Document
 	RelayState string
-}
-
-func generateMessageID() string {
-	id := make([]byte, 16)
-	if _, err := rand.Reader.Read(id); err != nil {
-		panic(err)
-	}
-
-	// first character must not be a digit
-	return fmt.Sprintf("_%x", id)
 }
 
 func (msg *outMessage) IssueInstant() *time.Time {

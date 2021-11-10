@@ -2,6 +2,7 @@ package spidsaml
 
 import (
 	"bytes"
+	"github.com/ma314smith/signedxml"
 	"text/template"
 )
 
@@ -23,7 +24,7 @@ func (sp *SP) NewAuthnRequest(idp *IDP) *AuthnRequest {
 	req := new(AuthnRequest)
 	req.SP = sp
 	req.IDP = idp
-	req.ID = generateMessageID()
+	req.ID = GenerateRandomID()
 	req.AcsIndex = -1
 	req.AttrIndex = -1
 	req.Level = 1
@@ -90,8 +91,27 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 
 	t := template.Must(template.New("req").Parse(tmpl))
 	var metadata bytes.Buffer
-	t.Execute(&metadata, data)
-	return metadata.Bytes()
+
+	if t.Execute(&metadata, data) != nil {
+		return nil
+	}
+
+	completeXML := metadata.String()
+
+	// Sign the Authnrequest
+	signer, err := signedxml.NewSigner(completeXML)
+
+	if err != nil {
+		return nil
+	}
+
+	completeXML, err = signer.Sign(authnreq.SP.Key())
+
+	if err != nil {
+		return nil
+	}
+
+	return []byte(completeXML)
 }
 
 // RedirectURL returns the full URL of the Identity Provider where user should be

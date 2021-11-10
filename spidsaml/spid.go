@@ -2,7 +2,6 @@ package spidsaml
 
 import (
 	"bytes"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
@@ -10,7 +9,6 @@ import (
 	"errors"
 	"github.com/beevik/etree"
 	"io/ioutil"
-	"math/big"
 	"text/template"
 
 	"github.com/ma314smith/signedxml"
@@ -153,20 +151,6 @@ func (sp *SP) GetIDP(entityID string) (*IDP, error) {
 	return nil, errors.New("IdP not found")
 }
 
-func (sp *SP) GenerateRandomRequestID() string {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
-	ret := make([]byte, 43)
-	for i := 0; i < 43; i++ {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
-		if err != nil {
-			return ""
-		}
-		ret[i] = letters[num.Int64()]
-	}
-
-	return "_" + string(ret)
-}
-
 // Metadata generates XML metadata of this Service Provider.
 func (sp *SP) Metadata(enableSigning bool) string {
 	const tmpl = `<?xml version="1.0" encoding="UTF-8"?>
@@ -259,7 +243,7 @@ func (sp *SP) Metadata(enableSigning bool) string {
 	}{
 		sp,
 		base64.StdEncoding.EncodeToString(sp.Cert().Raw),
-		sp.GenerateRandomRequestID(), // Generate a random ID for each request,
+		GenerateRandomID(), // Generate a random ID for each request,
 		sp.Cert().Subject.String(),
 		enableSigning,
 	}
