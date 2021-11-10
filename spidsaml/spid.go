@@ -168,7 +168,7 @@ func (sp *SP) GenerateRandomRequestID() string {
 }
 
 // Metadata generates XML metadata of this Service Provider.
-func (sp *SP) Metadata(enableSign bool) string {
+func (sp *SP) Metadata(enableSigning bool) string {
 	const tmpl = `<?xml version="1.0" encoding="UTF-8"?>
 <md:EntityDescriptor
     xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
@@ -178,6 +178,7 @@ func (sp *SP) Metadata(enableSign bool) string {
     entityID="{{ .EntityID }}"
     ID="{{ .RandomRequestID }}">
 
+	{{ if .EnableSigning }}
 	<ds:Signature>
         <ds:SignedInfo>
             <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
@@ -198,6 +199,7 @@ func (sp *SP) Metadata(enableSign bool) string {
             </ds:X509Data>
         </ds:KeyInfo>
     </ds:Signature>
+	{{ end }}
 
     <md:SPSSODescriptor
         protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"
@@ -253,11 +255,13 @@ func (sp *SP) Metadata(enableSign bool) string {
 		Cert            string
 		RandomRequestID string
 		CertSubject     string
+		EnableSigning   bool
 	}{
 		sp,
 		base64.StdEncoding.EncodeToString(sp.Cert().Raw),
 		sp.GenerateRandomRequestID(), // Generate a random ID for each request,
 		sp.Cert().Subject.String(),
+		enableSigning,
 	}
 
 	t := template.Must(template.New("metadata").Parse(tmpl))
@@ -276,7 +280,7 @@ func (sp *SP) Metadata(enableSign bool) string {
 	}
 
 	// If the sign is not enabled, just exit here.
-	if !enableSign {
+	if !enableSigning {
 		return completeXML
 	}
 
