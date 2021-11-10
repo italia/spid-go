@@ -2,7 +2,6 @@ package spidsaml
 
 import (
 	"bytes"
-	"github.com/ma314smith/signedxml"
 	"text/template"
 )
 
@@ -96,22 +95,7 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 		return nil
 	}
 
-	completeXML := metadata.String()
-
-	// Sign the Authnrequest
-	signer, err := signedxml.NewSigner(completeXML)
-
-	if err != nil {
-		return nil
-	}
-
-	completeXML, err = signer.Sign(authnreq.SP.Key())
-
-	if err != nil {
-		return nil
-	}
-
-	return []byte(completeXML)
+	return metadata.Bytes()
 }
 
 // RedirectURL returns the full URL of the Identity Provider where user should be

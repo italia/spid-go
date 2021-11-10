@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/ma314smith/signedxml"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -95,24 +96,29 @@ func (msg *outMessage) RedirectURL(baseurl string, xml []byte, param string) str
 func (msg *outMessage) PostForm(url string, xml []byte, param string) []byte {
 	// We need to get the name of the root element
 	doc := etree.NewDocument()
-	doc.ReadFromBytes(xml)
+	err := doc.ReadFromBytes(xml)
 
-	signedDoc, err := xmlsec.Sign(msg.SP.KeyPEM(), xml, xmlsec.SignatureOptions{
-		XMLID: []xmlsec.XMLIDOption{
-			{
-				ElementName:      doc.Root().Tag,
-				ElementNamespace: "",
-				AttributeName:    "ID",
-			},
-		},
-	})
 	if err != nil {
 		panic(err)
 	}
-	//os.Stdout.Write(signedDoc)
+
+	completeXML, _ := doc.WriteToString()
+
+	// Sign the Authnrequest
+	signer, err := signedxml.NewSigner(completeXML)
+
+	if err != nil {
+		panic(err)
+	}
+
+	completeXML, err = signer.Sign(msg.SP.Key())
+
+	if err != nil {
+		panic(err)
+	}
 
 	// encode in base64
-	encodedReqBuf := base64.StdEncoding.EncodeToString(signedDoc)
+	encodedReqBuf := base64.StdEncoding.EncodeToString([]byte(completeXML))
 
 	tmpl := template.Must(template.New("saml-post-form").Parse(`
 <html>
@@ -148,23 +154,23 @@ func (msg *outMessage) signatureTemplate() []byte {
 	tmpl := template.Must(template.New("saml-post-form").Parse(`
  <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
     <ds:SignedInfo>
-      <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
-      <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" />
-      <ds:Reference URI="#{{ .Ref }}">
-        <ds:Transforms>
-          <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
-          <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
-        </ds:Transforms>
-        <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" />
-        <ds:DigestValue></ds:DigestValue>
-      </ds:Reference>
-    </ds:SignedInfo>
-    <ds:SignatureValue></ds:SignatureValue>
-    <ds:KeyInfo>
-      <ds:X509Data>
-        <ds:X509Certificate>{{ .Cert }}</ds:X509Certificate>
-      </ds:X509Data>
-    </ds:KeyInfo>
+            <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
+            <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" />
+            <ds:Reference URI="#{{ .Ref }}">
+                <ds:Transforms>
+                    <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+                    <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
+                </ds:Transforms>
+                <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" />
+                <ds:DigestValue></ds:DigestValue>
+            </ds:Reference>
+        </ds:SignedInfo>
+        <ds:SignatureValue></ds:SignatureValue>
+        <ds:KeyInfo>
+            <ds:X509Data>
+                <ds:X509Certificate>{{ .Cert }}</ds:X509Certificate>
+            </ds:X509Data>
+        </ds:KeyInfo>
   </ds:Signature>
 	`))
 	data := struct {
@@ -176,7 +182,10 @@ func (msg *outMessage) signatureTemplate() []byte {
 	}
 
 	var rv bytes.Buffer
-	tmpl.Execute(&rv, data)
+	err := tmpl.Execute(&rv, data)
+	if err != nil {
+		return nil
+	}
 	return rv.Bytes()
 }
 
