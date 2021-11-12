@@ -32,6 +32,7 @@ func (sp *SP) NewAuthnRequest(idp *IDP) *AuthnRequest {
 }
 
 // XML generates the XML representation of this AuthnRequest
+// Applicato il bugfix di saml:Issuer
 func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 	var signatureTemplate string
 	if binding == HTTPPost {
@@ -71,11 +72,7 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 
 	ForceAuthn="{{ if gt .Level 1 }}true{{ else }}false{{ end }}">
 	
-	<saml:Issuer
-        NameQualifier="{{ .SP.EntityID }}"
-        Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">
-        {{ .SP.EntityID }}
-	</saml:Issuer>
+	<saml:Issuer NameQualifier="{{ .SP.EntityID }}" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">{{ .SP.EntityID }}</saml:Issuer>
 
 	{{ .SignatureTemplate }}
 
