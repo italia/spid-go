@@ -78,9 +78,7 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 
     <samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient" />
     <samlp:RequestedAuthnContext Comparison="{{ .Comparison }}">
-        <saml:AuthnContextClassRef>
-            https://www.spid.gov.it/SpidL{{ .Level }}
-        </saml:AuthnContextClassRef>
+        <saml:AuthnContextClassRef>https://www.spid.gov.it/SpidL{{ .Level }}</saml:AuthnContextClassRef>
     </samlp:RequestedAuthnContext>
 </samlp:AuthnRequest>
 `
