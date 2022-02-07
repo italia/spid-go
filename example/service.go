@@ -43,6 +43,11 @@ func main() {
 				Attributes:  []string{"fiscalNumber", "name", "familyName", "dateOfBirth"},
 			},
 		},
+		Organization: spidsaml.Organization{
+			Names:        []string{"Foobar"},
+			DisplayNames: []string{"Foobar"},
+			URLs:         []string{"https://www.foobar.it/"},
+		},
 	}
 
 	// Load Identity Providers from their XML metadata
