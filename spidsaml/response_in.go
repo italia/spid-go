@@ -35,9 +35,9 @@ func (sp *SP) ParseResponse(r *http.Request, inResponseTo string) (*Response, er
 	return response, nil
 }
 
-// validate performs validation on this message.
+// validate performs validation on this message, that is a response from an IDP to a login request
 func (response *Response) validate(inResponseTo string) error {
-	err := response.inMessage.validate()
+	err := response.inMessage.matchIncomingIDP()
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (response *Response) validate(inResponseTo string) error {
 	}
 
 	// As of current SPID spec, Destination might be populated with the entityID
-	// instead of the ACS URL
+	// instead of the ACS URL
 	destination := response.Destination()
 	knownDestination := destination == response.SP.EntityID
 	for _, acs := range response.SP.AssertionConsumerServices {
@@ -79,20 +79,25 @@ func (response *Response) validate(inResponseTo string) error {
 				response.AssertionInResponseTo(), inResponseTo)
 		}
 
-		err = xmlsec.Verify(response.IDP.CertPEM(), response.XML, xmlsec.SignatureOptions{
-			XMLID: []xmlsec.XMLIDOption{
-				{
-					ElementName:      "Assertion",
-					ElementNamespace: "",
-					AttributeName:    "ID",
+		for _, cert := range response.IDP.CertPEM() {
+			err = xmlsec.Verify(cert, response.XML, xmlsec.SignatureOptions{
+				XMLID: []xmlsec.XMLIDOption{
+					{
+						ElementName:      "Assertion",
+						ElementNamespace: "",
+						AttributeName:    "ID",
+					},
+					{
+						ElementName:      "Response",
+						ElementNamespace: "",
+						AttributeName:    "ID",
+					},
 				},
-				{
-					ElementName:      "Response",
-					ElementNamespace: "",
-					AttributeName:    "ID",
-				},
-			},
-		})
+			})
+			if (err == nil) {
+				break;
+			}
+		}
 		if err != nil {
 			return fmt.Errorf("Signature verification failed: %s", err.Error())
 		}
@@ -102,7 +107,7 @@ func (response *Response) validate(inResponseTo string) error {
 			return fmt.Errorf("Assertion is not signed")
 		}
 
-		now := time.Now().UTC()
+		now := response.clock.Now().UTC()
 
 		// exact match is ok
 		notBefore, err := response.NotBefore()

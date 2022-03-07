@@ -57,11 +57,20 @@ type Session struct {
 	Attributes   map[string]string
 }
 
+// CertPEM returns the of this Service Provider. certificate in PEM format.
+func (sp *SP) CertPEM() []byte {
+	byteValue, err := ioutil.ReadFile(sp.CertFile)
+	if err != nil {
+		panic(err)
+	}
+	return byteValue
+}
+
 // Cert returns the certificate of this Service Provider.
 func (sp *SP) Cert() *x509.Certificate {
 	if sp._cert == nil {
 		// read file as a byte array
-		byteValue, _ := ioutil.ReadFile(sp.CertFile)
+		byteValue := sp.CertPEM()
 
 		block, _ := pem.Decode(byteValue)
 		if block == nil || block.Type != "CERTIFICATE" {
@@ -84,12 +93,28 @@ func (sp *SP) Key() *rsa.PrivateKey {
 		byteValue, _ := ioutil.ReadFile(sp.KeyFile)
 
 		block, _ := pem.Decode(byteValue)
-		if block == nil || block.Type != "RSA PRIVATE KEY" {
-			panic("failed to parse private key from PEM file")
+		if block == nil {
+			panic("failed to parse private key from PEM file " + sp.KeyFile)
 		}
 
 		var err error
-		sp._key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+
+		switch block.Type {
+		case "RSA PRIVATE KEY":
+			sp._key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+
+		case "PRIVATE KEY":
+			var keyOfSomeType interface{}
+			keyOfSomeType, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+			var ok bool
+			sp._key, ok = keyOfSomeType.(*rsa.PrivateKey)
+			if !ok {
+				err = errors.New("file " + sp.KeyFile + " does not contain an RSA private key")
+			}
+		default:
+			err = errors.New("unknown key type " + block.Type)
+		}
+
 		if err != nil {
 			panic(err)
 		}

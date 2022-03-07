@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"../spidsaml"
+	"github.com/f-lombardo/spid-go/spidsaml"
 )
 
 // This demo application shows how to use the spidsaml package
@@ -21,16 +21,16 @@ var sp *spidsaml.SP
 // These variables belong the session of each user. In an actual application
 // you would NOT store them as global variables, but you'd store them in the
 // user session backed by a cookie, using for example github.com/gorilla/sessions,
-// but for simplificy in this example application we are doing this way.
+// but for simplicity in this example application we are doing this way.
 var spidSession *spidsaml.Session
 var authnReqID, logoutReqID string
 
 func main() {
 	// Initialize our SPID object with information about this Service Provider
 	sp = &spidsaml.SP{
-		EntityID: "https://www.foobar.it/",
-		KeyFile:  "sp.key",
-		CertFile: "sp.pem",
+		EntityID: "https://spid.comune.roma.it",
+		KeyFile:  "key.pem",
+		CertFile: "crt.pem",
 		AssertionConsumerServices: []string{
 			"http://localhost:8000/spid-sso",
 		},
@@ -188,7 +188,7 @@ func spidSSO(w http.ResponseWriter, r *http.Request) {
 
 	// Log response as required by the SPID rules.
 	// Hint: log it in a way that does not mangle whitespace preventing signature from
-	// being verified at a later time
+	// being verified at a later time
 	fmt.Printf("SPID Response: %s\n", response.XML)
 
 	if response.Success() {
