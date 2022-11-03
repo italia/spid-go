@@ -95,6 +95,45 @@ func TestSP_Metadata(t *testing.T) {
 	}
 }
 
+func TestSP_MetadataOrganization(t *testing.T) {
+	sp := createSPForTes()
+	doc := etree.NewDocument()
+	if doc.ReadFromString(sp.Metadata()) != nil {
+		panic("error occurred during parsing metadata file")
+	}
+
+	testCases := []struct {
+		name        string
+		entityPath  string
+		entityValue []string
+	}{
+		{
+			name:        "Organization name",
+			entityPath:  "/EntityDescriptor/Organization/OrganizationName",
+			entityValue: []string{"Comune di Roma"},
+		},
+		{
+			name:        "Organization display name",
+			entityPath:  "/EntityDescriptor/Organization/OrganizationDisplayName",
+			entityValue: []string{"Comune di Roma"},
+		},
+		{
+			name:        "Organization URL",
+			entityPath:  "/EntityDescriptor/Organization/OrganizationURL",
+			entityValue: []string{"https://comune.roma.it"},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, e := range doc.FindElements(tc.entityPath) {
+				if !contains(tc.entityValue, e.Text()) {
+					t.Fail()
+				}
+			}
+		})
+	}
+}
+
 func TestSP_KeyPEM(t *testing.T) {
 	sp := createSPForTes()
 
@@ -157,6 +196,11 @@ func createSPForTes() *SP {
 				Attributes:  []string{"fiscalNumber", "name", "familyName", "dateOfBirth"},
 			},
 		},
+		Organization: Organization{
+			Names:        []string{"Comune di Roma"},
+			DisplayNames: []string{"Comune di Roma"},
+			URLs:         []string{"https://comune.roma.it"},
+		},
 	}
 }
 
@@ -178,4 +222,13 @@ func readKey(keyFile string) (key *rsa.PrivateKey, err interface{}) {
 		KeyFile: keyFile,
 	}
 	return sp.Key(), nil
+}
+
+func contains(array []string, value string) bool {
+	for _, el := range array {
+		if el == value {
+			return true
+		}
+	}
+	return false
 }

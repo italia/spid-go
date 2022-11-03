@@ -17,6 +17,13 @@ type AttributeConsumingService struct {
 	Attributes  []string
 }
 
+// Organization defines SP Organization data
+type Organization struct {
+	Names        []string
+	DisplayNames []string
+	URLs         []string
+}
+
 // SAMLBinding can be either HTTPRedirect or HTTPPost.
 type SAMLBinding string
 
@@ -37,6 +44,7 @@ type SP struct {
 	IDP                        map[string]*IDP
 	_cert                      *x509.Certificate
 	_key                       *rsa.PrivateKey
+	Organization               Organization
 }
 
 // Session represents an active SPID session.
@@ -180,6 +188,18 @@ func (sp *SP) Metadata() string {
         {{ end }}
 
     </md:SPSSODescriptor> 
+
+    <md:Organization>
+        {{ range $name := .Organization.Names }}
+        <md:OrganizationName xml:lang="it">{{ $name }}</md:OrganizationName>
+        {{ end }}
+        {{ range $displayName := .Organization.DisplayNames }}
+        <md:OrganizationDisplayName xml:lang="it">{{ $displayName }}</md:OrganizationDisplayName>
+        {{ end }}
+        {{ range $url := .Organization.URLs }}
+        <md:OrganizationURL xml:lang="it">{{ $url }}</md:OrganizationURL>
+        {{ end }}
+    </md:Organization>
 
 </md:EntityDescriptor>
 `
