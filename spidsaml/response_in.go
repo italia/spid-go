@@ -63,10 +63,22 @@ func (response *Response) validate(inResponseTo string) error {
 
 	if response.Success() {
 		// We expect to have an <Assertion> element
+		if response.Version() != "2.0" {
+			return fmt.Errorf("Response version (%s) is not 2.0",
+				response.Version())
+		}
+
+		if response.Issuer() == "" {
+			return fmt.Errorf("Response/Issuer missing ")
+		}
 
 		if response.Issuer() != response.AssertionIssuer() {
 			return fmt.Errorf("Response/Issuer (%s) does not match Assertion/Issuer (%s)",
 				response.Issuer(), response.AssertionIssuer())
+		}
+
+		if response.IssuerFormat() != "urn:oasis:names:tc:SAML:2.0:nameid-format:entity" && response.IssuerFormat() != "" {
+			return fmt.Errorf("Issuer format attribute not valid")
 		}
 
 		if response.AssertionAudience() != response.SP.EntityID {
@@ -259,4 +271,20 @@ func (response *Response) Attributes() map[string]string {
 		attributes[e.SelectAttr("Name").Value] = e.FindElement("AttributeValue").Text()
 	}
 	return attributes
+}
+
+// Version returns the value of the Version attribute.
+func (response *Response) Version() string {
+	return response.doc.FindElement("/Response").SelectAttrValue("Version", "")
+}
+
+// Version returns the value of the Version attribute.
+func (response *Response) IssueInstant() (time.Time, error) {
+	ts := response.doc.FindElement("/Response").SelectAttrValue("IssueInstant", "")
+	return time.Parse(time.RFC3339, ts)
+
+}
+
+func (response *Response) IssuerFormat() string {
+	return response.doc.FindElement("/Response/Issuer").Text()
 }
