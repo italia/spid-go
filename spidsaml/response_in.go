@@ -63,7 +63,6 @@ func (response *Response) validate(inResponseTo string) error {
 
 	if response.Success() {
 		// We expect to have an <Assertion> element
-		// We expect to have an <Assertion> element
 		if response.Version() != "2.0" {
 			return fmt.Errorf("Response version (%s) is not 2.0",
 				response.Version())
