@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"../spidsaml"
+	"github.com/italia/spid-go/spidsaml"
 )
 
 // This demo application shows how to use the spidsaml package
