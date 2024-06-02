@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/beevik/etree"
 	xmlsec "github.com/crewjam/go-xmlsec"
+	dsig "github.com/russellhaering/goxmldsig"
 )
 
 // protocolMessage is the base class for all SAML messages
@@ -86,7 +88,7 @@ func (msg *outMessage) RedirectURL(baseurl string, xml []byte, param string) str
 		panic(err)
 	}
 	query := ret.Query()
-	query.Set(param, string(w.Bytes()))
+	query.Set(param, w.String())
 	if msg.RelayState != "" {
 		query.Set("RelayState", msg.RelayState)
 	}
@@ -106,23 +108,51 @@ func (msg *outMessage) RedirectURL(baseurl string, xml []byte, param string) str
 	return ret.String()
 }
 
+func SignXML(xml []byte, sp *SP) ([]byte, error) {
+	// Prepare key and certificate
+	keyPair, err := tls.X509KeyPair(sp.CertPEM(), sp.KeyPEM())
+	if err != nil {
+		return nil, err
+	}
+	keyStore := dsig.TLSCertKeyStore(keyPair)
+
+	// Initialize the signing context
+	signingContext := dsig.NewDefaultSigningContext(keyStore)
+	signingContext.IdAttribute = "ID"
+	signingContext.Canonicalizer = dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList("")
+	signingContext.SetSignatureMethod(dsig.RSASHA256SignatureMethod)
+
+	// Get the position of the signature element and remove it so that it does not
+	// affect the digest
+	doc := etree.NewDocument()
+	doc.ReadFromBytes(xml)
+	sigPlaceholderEl := doc.FindElement("//ds:Signature")
+	if sigPlaceholderEl == nil {
+		return nil, errors.New("signature element not found")
+	}
+	sigParent := sigPlaceholderEl.Parent()
+	sigIndex := sigPlaceholderEl.Index()
+	sigParent.RemoveChildAt(sigIndex)
+
+	// Perform the signature
+	signedDocEl, err := signingContext.SignEnveloped(doc.Root())
+	if err != nil {
+		return nil, err
+	}
+
+	// Signature element was placed at the end; extract it and place it in the
+	// desired position
+	sigEl := signedDocEl.Child[len(signedDocEl.Child)-1]
+	sigParent.InsertChildAt(sigIndex, sigEl)
+
+	return doc.WriteToBytes()
+}
+
 // PostForm returns an HTML page with a JavaScript auto-post command that submits
 // the request to the Identity Provider in order to initiate their Single Sign-On.
 // In SAML words, this implements the HTTP-POST binding.
 func (msg *outMessage) PostForm(url string, xml []byte, param string) []byte {
-	// We need to get the name of the root element
-	doc := etree.NewDocument()
-	doc.ReadFromBytes(xml)
-
-	signedDoc, err := xmlsec.Sign(msg.SP.KeyPEM(), xml, xmlsec.SignatureOptions{
-		XMLID: []xmlsec.XMLIDOption{
-			{
-				ElementName:      doc.Root().Tag,
-				ElementNamespace: "",
-				AttributeName:    "ID",
-			},
-		},
-	})
+	signedDoc, err := SignXML(xml, msg.SP)
 	if err != nil {
 		panic(err)
 	}
@@ -162,6 +192,10 @@ func (msg *outMessage) PostForm(url string, xml []byte, param string) []byte {
 }
 
 func (msg *outMessage) signatureTemplate() []byte {
+	return SignatureTemplate(msg.ID, msg.SP)
+}
+
+func SignatureTemplate(msgID string, sp *SP) []byte {
 	tmpl := template.Must(template.New("saml-post-form").Parse(`
  <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
     <ds:SignedInfo>
@@ -188,8 +222,8 @@ func (msg *outMessage) signatureTemplate() []byte {
 		Ref  string
 		Cert string
 	}{
-		msg.ID,
-		base64.StdEncoding.EncodeToString(msg.SP.Cert().Raw),
+		msgID,
+		base64.StdEncoding.EncodeToString(sp.Cert().Raw),
 	}
 
 	var rv bytes.Buffer
@@ -210,7 +244,7 @@ func (msg *inMessage) parse(r *http.Request, param string) error {
 		err = fmt.Errorf("Invalid HTTP method: %s", r.Method)
 	}
 
-	if (err != nil) {
+	if err != nil {
 		return err
 	}
 
@@ -310,7 +344,7 @@ func (msg *inMessage) validateSignatureForGet(param string, query url.Values) er
 	// Verify the signature
 	for _, cert := range msg.IDP.Certs {
 		err = rsa.VerifyPKCS1v15(cert.PublicKey.(*rsa.PublicKey), hashAlg, h, sig)
-		if (err == nil) {
+		if err == nil {
 			return nil
 		}
 	}

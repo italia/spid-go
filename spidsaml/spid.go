@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"io/ioutil"
+	"os"
 	"text/template"
 )
 
@@ -150,10 +151,13 @@ func (sp *SP) GetIDP(entityID string) (*IDP, error) {
 func (sp *SP) Metadata() string {
 	const tmpl = `<?xml version="1.0"?> 
 <md:EntityDescriptor 
+    xmlns:spid="https://spid.gov.it/saml-extensions"
     xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"  
     xmlns:ds="http://www.w3.org/2000/09/xmldsig#"  
     entityID="{{.EntityID}}"  
-    ID="_681a637-6cd4-434f-92c3-4fed720b2ad8"> 
+    ID="{{.ID}}">
+
+	<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" />
      
     <md:SPSSODescriptor  
         protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"  
@@ -217,10 +221,14 @@ func (sp *SP) Metadata() string {
 
 </md:EntityDescriptor>
 `
+
+	var ID = "_681a637-6cd4-434f-92c3-4fed720b2ad8"
 	aux := struct {
+		ID string
 		*SP
 		Cert string
 	}{
+		ID,
 		sp,
 		base64.StdEncoding.EncodeToString(sp.Cert().Raw),
 	}
@@ -229,5 +237,11 @@ func (sp *SP) Metadata() string {
 	var metadata bytes.Buffer
 	t.Execute(&metadata, aux)
 
-	return metadata.String()
+	signedDoc, err := SignXML(metadata.Bytes(), sp)
+	if err != nil {
+		os.Stderr.WriteString("Metadata signature failed: " + err.Error() + "\n")
+		signedDoc = metadata.Bytes()
+	}
+
+	return string(signedDoc)
 }
