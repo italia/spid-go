@@ -76,6 +76,18 @@ func (msg *outMessage) IssueInstantString() string {
 
 // RedirectURL crafts the URL to be used for sending the current message via a HTTPRedirect binding
 func (msg *outMessage) RedirectURL(baseurl string, xml []byte, param string) string {
+	// Remove signature placeholder
+	doc := etree.NewDocument()
+	doc.ReadFromBytes(xml)
+	sigPlaceholderEl := doc.FindElement("//ds:Signature")
+	if sigPlaceholderEl != nil {
+		sigPlaceholderEl.Parent().RemoveChild(sigPlaceholderEl)
+	}
+	xml, err := doc.WriteToBytes()
+	if err != nil {
+		panic(err)
+	}
+
 	w := &bytes.Buffer{}
 	w1 := base64.NewEncoder(base64.StdEncoding, w)
 	w2, _ := flate.NewWriter(w1, 9)
@@ -89,9 +101,7 @@ func (msg *outMessage) RedirectURL(baseurl string, xml []byte, param string) str
 	}
 	query := ret.Query()
 	query.Set(param, w.String())
-	if msg.RelayState != "" {
-		query.Set("RelayState", msg.RelayState)
-	}
+	query.Set("RelayState", msg.RelayState)
 	query.Set("SigAlg", "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
 
 	// sign request
@@ -188,46 +198,6 @@ func (msg *outMessage) PostForm(url string, xml []byte, param string) []byte {
 		panic(err)
 	}
 
-	return rv.Bytes()
-}
-
-func (msg *outMessage) signatureTemplate() []byte {
-	return SignatureTemplate(msg.ID, msg.SP)
-}
-
-func SignatureTemplate(msgID string, sp *SP) []byte {
-	tmpl := template.Must(template.New("saml-post-form").Parse(`
- <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
-    <ds:SignedInfo>
-      <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
-      <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" />
-      <ds:Reference URI="#{{ .Ref }}">
-        <ds:Transforms>
-          <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
-          <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
-        </ds:Transforms>
-        <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" />
-        <ds:DigestValue></ds:DigestValue>
-      </ds:Reference>
-    </ds:SignedInfo>
-    <ds:SignatureValue></ds:SignatureValue>
-    <ds:KeyInfo>
-      <ds:X509Data>
-        <ds:X509Certificate>{{ .Cert }}</ds:X509Certificate>
-      </ds:X509Data>
-    </ds:KeyInfo>
-  </ds:Signature>
-	`))
-	data := struct {
-		Ref  string
-		Cert string
-	}{
-		msgID,
-		base64.StdEncoding.EncodeToString(sp.Cert().Raw),
-	}
-
-	var rv bytes.Buffer
-	tmpl.Execute(&rv, data)
 	return rv.Bytes()
 }
 

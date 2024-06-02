@@ -32,21 +32,14 @@ func (sp *SP) NewLogoutRequest(session *Session) (*LogoutRequestOut, error) {
 
 // XML generates the XML representation of this LogoutRequest
 func (logoutreq *LogoutRequestOut) XML(binding SAMLBinding) []byte {
-	var signatureTemplate string
-	if binding == HTTPPost {
-		signatureTemplate = string(logoutreq.signatureTemplate())
-	}
-
 	data := struct {
 		*LogoutRequestOut
-		Destination       string
-		IssueInstant      string
-		SignatureTemplate string
+		Destination  string
+		IssueInstant string
 	}{
 		logoutreq,
 		logoutreq.IDP.SLOReqURLs[binding],
 		logoutreq.IssueInstantString(),
-		signatureTemplate,
 	}
 
 	const tmpl = `<?xml version="1.0"?> 
@@ -63,7 +56,7 @@ func (logoutreq *LogoutRequestOut) XML(binding SAMLBinding) []byte {
 		{{ .SP.EntityID }}
 	</saml:Issuer>
 
-	{{ .SignatureTemplate }}
+	<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" />
 
 	<saml:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient" 
 		NameQualifier="{{ .Session.IDPEntityID }}">

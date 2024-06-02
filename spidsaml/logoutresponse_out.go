@@ -41,21 +41,14 @@ func (sp *SP) NewLogoutResponse(logoutreq *LogoutRequestIn, status LogoutStatus)
 
 // XML generates the XML representation of this LogoutResponseOut
 func (logoutres *LogoutResponseOut) XML(binding SAMLBinding) []byte {
-	var signatureTemplate string
-	if binding == HTTPPost {
-		signatureTemplate = string(logoutres.signatureTemplate())
-	}
-
 	data := struct {
 		*LogoutResponseOut
-		Destination       string
-		IssueInstant      string
-		SignatureTemplate string
+		Destination  string
+		IssueInstant string
 	}{
 		logoutres,
 		logoutres.IDP.SLOResURLs[binding],
 		logoutres.IssueInstantString(),
-		signatureTemplate,
 	}
 
 	// TODO: what should we send in case of .Status == "failed"?
@@ -76,7 +69,7 @@ func (logoutres *LogoutResponseOut) XML(binding SAMLBinding) []byte {
 		{{ .SP.EntityID }}
 	</saml:Issuer>
 
-	{{ .SignatureTemplate }}
+	<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" />
 
 	<samlp:Status>
 		{{ if eq .Status "success" }}

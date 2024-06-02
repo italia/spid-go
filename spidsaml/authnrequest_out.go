@@ -33,21 +33,14 @@ func (sp *SP) NewAuthnRequest(idp *IDP) *AuthnRequest {
 
 // XML generates the XML representation of this AuthnRequest
 func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
-	var signatureTemplate string
-	if binding == HTTPPost {
-		signatureTemplate = string(authnreq.signatureTemplate())
-	}
-
 	data := struct {
 		*AuthnRequest
-		Destination       string
-		IssueInstant      string
-		SignatureTemplate string
+		Destination  string
+		IssueInstant string
 	}{
 		authnreq,
 		authnreq.IDP.SSOURLs[binding],
 		authnreq.IssueInstantString(),
-		signatureTemplate,
 	}
 
 	const tmpl = `<?xml version="1.0"?> 
@@ -73,11 +66,9 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 	
 	<saml:Issuer
         NameQualifier="{{ .SP.EntityID }}"
-        Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">
-        {{ .SP.EntityID }}
-	</saml:Issuer>
-
-	{{ .SignatureTemplate }}
+        Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">{{ .SP.EntityID }}</saml:Issuer>
+	
+	<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" />
 
     <samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient" />
     <samlp:RequestedAuthnContext Comparison="{{ .Comparison }}">
