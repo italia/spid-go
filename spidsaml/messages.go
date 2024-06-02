@@ -74,6 +74,21 @@ func (msg *outMessage) IssueInstantString() string {
 	return msg.IssueInstant().Format("2006-01-02T15:04:05.000Z")
 }
 
+func getSigningContext(sp *SP) *dsig.SigningContext {
+	// Prepare key and certificate
+	keyPair, err := tls.X509KeyPair(sp.CertPEM(), sp.KeyPEM())
+	if err != nil {
+		panic(err)
+	}
+	keyStore := dsig.TLSCertKeyStore(keyPair)
+
+	ctx := dsig.NewDefaultSigningContext(keyStore)
+	ctx.IdAttribute = "ID"
+	ctx.Canonicalizer = dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList("")
+	ctx.SetSignatureMethod(dsig.RSASHA256SignatureMethod)
+	return ctx
+}
+
 // RedirectURL crafts the URL to be used for sending the current message via a HTTPRedirect binding
 func (msg *outMessage) RedirectURL(baseurl string, xml []byte, param string) string {
 	// Remove signature placeholder
@@ -88,6 +103,7 @@ func (msg *outMessage) RedirectURL(baseurl string, xml []byte, param string) str
 		panic(err)
 	}
 
+	// Compress and encode XML document
 	w := &bytes.Buffer{}
 	w1 := base64.NewEncoder(base64.StdEncoding, w)
 	w2, _ := flate.NewWriter(w1, 9)
@@ -99,38 +115,30 @@ func (msg *outMessage) RedirectURL(baseurl string, xml []byte, param string) str
 	if err != nil {
 		panic(err)
 	}
-	query := ret.Query()
-	query.Set(param, w.String())
-	query.Set("RelayState", msg.RelayState)
-	query.Set("SigAlg", "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
+	// We can't depend on Query().set() as order matters for signing
+	query := ret.RawQuery
+	if len(query) > 0 {
+		query += "&"
+	}
+	query += param + "=" + url.QueryEscape(w.String())
+	query += "&RelayState=" + url.QueryEscape(msg.RelayState)
+	query += "&SigAlg=" + url.QueryEscape("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
 
 	// sign request
-	h := sha256.New()
-	h.Write([]byte(query.Encode()))
-	d := h.Sum(nil)
-	signature, err := rsa.SignPKCS1v15(rand.Reader, msg.SP.Key(), crypto.SHA256, d)
+	signingContext := getSigningContext(msg.SP)
+	sig, err := signingContext.SignString(query)
 	if err != nil {
 		panic(err)
 	}
-	query.Set("Signature", base64.StdEncoding.EncodeToString(signature))
 
-	ret.RawQuery = query.Encode()
+	query += "&Signature=" + url.QueryEscape(base64.StdEncoding.EncodeToString(sig))
+
+	ret.RawQuery = query
 	return ret.String()
 }
 
 func SignXML(xml []byte, sp *SP) ([]byte, error) {
-	// Prepare key and certificate
-	keyPair, err := tls.X509KeyPair(sp.CertPEM(), sp.KeyPEM())
-	if err != nil {
-		return nil, err
-	}
-	keyStore := dsig.TLSCertKeyStore(keyPair)
-
-	// Initialize the signing context
-	signingContext := dsig.NewDefaultSigningContext(keyStore)
-	signingContext.IdAttribute = "ID"
-	signingContext.Canonicalizer = dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList("")
-	signingContext.SetSignatureMethod(dsig.RSASHA256SignatureMethod)
+	signingContext := getSigningContext(sp)
 
 	// Get the position of the signature element and remove it so that it does not
 	// affect the digest
