@@ -48,6 +48,10 @@ func main() {
 			DisplayNames: []string{"Foobar"},
 			URLs:         []string{"https://www.foobar.it/"},
 		},
+		ContactPerson: spidsaml.ContactPerson{
+			Email:   "info@foobar.it",
+			IPACode: "FOOBAR",
+		},
 	}
 
 	// Load Identity Providers from their XML metadata

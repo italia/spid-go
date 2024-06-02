@@ -24,6 +24,11 @@ type Organization struct {
 	URLs         []string
 }
 
+type ContactPerson struct {
+	Email   string
+	IPACode string
+}
+
 // SAMLBinding can be either HTTPRedirect or HTTPPost.
 type SAMLBinding string
 
@@ -45,6 +50,7 @@ type SP struct {
 	_cert                      *x509.Certificate
 	_key                       *rsa.PrivateKey
 	Organization               Organization
+	ContactPerson              ContactPerson
 }
 
 // Session represents an active SPID session.
@@ -200,6 +206,14 @@ func (sp *SP) Metadata() string {
         <md:OrganizationURL xml:lang="it">{{ $url }}</md:OrganizationURL>
         {{ end }}
     </md:Organization>
+
+    <md:ContactPerson contactType="other">
+        <md:Extensions>
+            <spid:IPACode>{{.ContactPerson.IPACode}}</spid:IPACode>
+            <spid:Public/>
+        </md:Extensions>
+        <md:EmailAddress>{{.ContactPerson.Email}}</md:EmailAddress>
+    </md:ContactPerson>
 
 </md:EntityDescriptor>
 `
