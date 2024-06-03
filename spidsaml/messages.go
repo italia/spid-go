@@ -8,11 +8,11 @@ type Clock struct {
 	instant time.Time
 }
 
-func (this *Clock) Now() time.Time {
-	if this == nil {
+func (c *Clock) Now() time.Time {
+	if c == nil {
 		return time.Now()
 	}
-	return this.instant
+	return c.instant
 }
 
 // protocolMessage is the base class for all SAML messages

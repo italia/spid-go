@@ -43,7 +43,7 @@ func (msg *inMessage) read(r *http.Request, param string) error {
 	case "GET":
 		xml, err = _readGet(r, param)
 	default:
-		err = fmt.Errorf("Invalid HTTP method: %s", r.Method)
+		err = fmt.Errorf("invalid HTTP method: %s", r.Method)
 	}
 
 	if err != nil {
@@ -58,7 +58,7 @@ func (msg *inMessage) read(r *http.Request, param string) error {
 func _readGet(r *http.Request, param string) ([]byte, error) {
 	samlEncoding := r.URL.Query().Get("SAMLEncoding")
 	if samlEncoding != "" && samlEncoding != "urn:oasis:names:tc:SAML:2.0:bindings:URL-Encoding:DEFLATE" {
-		return nil, errors.New("Invalid SAMLEncoding")
+		return nil, errors.New("invalid SAMLEncoding")
 	}
 
 	payload, err := base64.StdEncoding.DecodeString(r.URL.Query().Get(param))
@@ -98,7 +98,7 @@ func (msg *inMessage) validateSignature(r *http.Request, param string) error {
 		return msg.validateSignatureForGet(param, r.URL.Query())
 
 	default:
-		return fmt.Errorf("Invalid HTTP method: %s", r.Method)
+		return fmt.Errorf("invalid HTTP method: %s", r.Method)
 	}
 }
 
@@ -139,7 +139,7 @@ func (msg *inMessage) validateSignatureForGet(param string, query url.Values) er
 		h = h2[:]
 		hashAlg = crypto.SHA512
 	} else {
-		return fmt.Errorf("Unknown SigAlg: %s", query.Get("SigAlg"))
+		return fmt.Errorf("unknown SigAlg: %s", query.Get("SigAlg"))
 	}
 
 	// Verify the signature

@@ -53,7 +53,7 @@ func (logoutreq *LogoutRequestIn) validate(r *http.Request) error {
 		}
 	}
 	if !knownDestination {
-		return fmt.Errorf("Invalid Destination: '%s'", destination)
+		return fmt.Errorf("invalid Destination: '%s'", destination)
 	}
 
 	return nil

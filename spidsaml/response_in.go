@@ -42,7 +42,7 @@ func (response *Response) validate(inResponseTo string) error {
 	}
 
 	if inResponseTo != response.InResponseTo() {
-		return fmt.Errorf("Invalid InResponseTo: '%s' (expected: '%s')",
+		return fmt.Errorf("invalid InResponseTo: '%s' (expected: '%s')",
 			response.InResponseTo(), inResponseTo)
 	}
 
@@ -57,7 +57,7 @@ func (response *Response) validate(inResponseTo string) error {
 		}
 	}
 	if !knownDestination {
-		return fmt.Errorf("Invalid Destination: '%s'", destination)
+		return fmt.Errorf("invalid Destination: '%s'", destination)
 	}
 
 	if response.Success() {
@@ -69,12 +69,12 @@ func (response *Response) validate(inResponseTo string) error {
 		}
 
 		if response.AssertionAudience() != response.SP.EntityID {
-			return fmt.Errorf("Invalid Audience: '%s' (expected: '%s')",
+			return fmt.Errorf("invalid Audience: '%s' (expected: '%s')",
 				response.AssertionAudience(), response.SP.EntityID)
 		}
 
 		if response.AssertionInResponseTo() != inResponseTo {
-			return fmt.Errorf("Invalid InResponseTo: '%s' (expected: '%s')",
+			return fmt.Errorf("invalid InResponseTo: '%s' (expected: '%s')",
 				response.AssertionInResponseTo(), inResponseTo)
 		}
 
@@ -104,7 +104,7 @@ func (response *Response) validate(inResponseTo string) error {
 			return err
 		}
 		if now.Before(notBefore) {
-			return fmt.Errorf("Invalid NotBefore: '%s' (now: '%s')",
+			return fmt.Errorf("invalid NotBefore: '%s' (now: '%s')",
 				notBefore.Format(time.RFC3339), now.Format(time.RFC3339))
 		}
 
@@ -115,7 +115,7 @@ func (response *Response) validate(inResponseTo string) error {
 		}
 		if now.After(notOnOrAfter) || now.Equal(notOnOrAfter) {
 			fmt.Println(string(response.XML))
-			return fmt.Errorf("Invalid NotOnOrAfter: '%s' (now: '%s')",
+			return fmt.Errorf("invalid NotOnOrAfter: '%s' (now: '%s')",
 				notOnOrAfter.Format(time.RFC3339), now.Format(time.RFC3339))
 		}
 
@@ -125,7 +125,7 @@ func (response *Response) validate(inResponseTo string) error {
 			return err
 		}
 		if now.After(scdNotOnOrAfter) || now.Equal(scdNotOnOrAfter) {
-			return fmt.Errorf("Invalid SubjectConfirmationData/NotOnOrAfter: '%s' (now: '%s')",
+			return fmt.Errorf("invalid SubjectConfirmationData/NotOnOrAfter: '%s' (now: '%s')",
 				scdNotOnOrAfter.Format(time.RFC3339), now.Format(time.RFC3339))
 		}
 
@@ -138,14 +138,12 @@ func (response *Response) validate(inResponseTo string) error {
 			}
 		}
 		if !knownRecipient {
-			return fmt.Errorf("Invalid SubjectConfirmationData/@Recipient': '%s'", assertionRecipient)
+			return fmt.Errorf("invalid SubjectConfirmationData/@Recipient': '%s'", assertionRecipient)
 		}
 
 		if response.Destination() != response.AssertionRecipient() {
-			return fmt.Errorf("Mismatch between Destination and SubjectConfirmationData/@Recipient")
+			return fmt.Errorf("mismatch between Destination and SubjectConfirmationData/@Recipient")
 		}
-	} else {
-		// Authentication failed, so we expect no <Assertion> element.
 	}
 
 	return nil

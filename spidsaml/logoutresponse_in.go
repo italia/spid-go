@@ -43,7 +43,7 @@ func (logoutres *LogoutResponseIn) validate(r *http.Request, inResponseTo string
 	}
 
 	if inResponseTo != logoutres.InResponseTo() {
-		return fmt.Errorf("Invalid InResponseTo: '%s' (expected: '%s')",
+		return fmt.Errorf("invalid InResponseTo: '%s' (expected: '%s')",
 			logoutres.InResponseTo(), inResponseTo)
 	}
 
@@ -58,7 +58,7 @@ func (logoutres *LogoutResponseIn) validate(r *http.Request, inResponseTo string
 		}
 	}
 	if !knownDestination {
-		return fmt.Errorf("Invalid Destination: '%s'", destination)
+		return fmt.Errorf("invalid Destination: '%s'", destination)
 	}
 
 	return nil

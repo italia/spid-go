@@ -28,8 +28,10 @@ func TestSP_ParseLogoutResponse(t *testing.T) {
 			sp := createSPForTes()
 			sp.LoadIDPFromXMLFile("../fixtures/idp_metadata/testenv2_metadata.xml")
 
-
 			request, err := http.NewRequest(http.MethodGet, logoutUrl(), bytes.NewReader(creatTestLogoutResponseXml()))
+			if err != nil {
+				t.Error("Failed to create request with error ", err)
+			}
 
 			q := request.URL.Query()
 			q.Add("SAMLResponse", "hZLdauMwEIXv+xRC94klRXYcEQeWLYVCWmgTStmbMpYnicCWjEcm7dvXMf2nZC91dObozIeWBE3dmnXYhz7eI7XBE7LnpvZkxquC9503AciR8dAgmWjN5s/N2qipMG0XYrCh5uwBO3LBF3yQObu+LLirnkCX88VsJ9I5QIlQWplWkKpcIWZWWzW3CxBlqoYBoh6vPUXwccgQSk7EbKLkVmZGpibV/zi7RIrOQxyfOcTYmiSpg4X6ECiaXAiRUOuqCdVhCPTv22xDwZ8w31Uo9EKVArScS12moCtZzdJMZlpnfHXB2PK0sRmrdF8YnEcARNidOvG3kWf6aHc8HqfH2TR0+0QJIZPHm/XGHrCBT6/7v3niRi4WObsKXQPxfKGTMlDYjVaDPrr4wtntoN71ULudw67gFBqMB+f3fPULyTxfJl9YfLBpzSZC7Okk/JD+hgrZA9Q9nm9Ho9tsemuRiCdjdvI9/P38/VeuLl4B")
