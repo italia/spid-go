@@ -29,8 +29,8 @@ func main() {
 	// Initialize our SPID object with information about this Service Provider
 	sp = &spidsaml.SP{
 		EntityID: "https://spid.comune.roma.it",
-		KeyFile:  "key.pem",
-		CertFile: "crt.pem",
+		KeyFile:  "../sample_data/key.pem",
+		CertFile: "../sample_data/crt.pem",
 		AssertionConsumerServices: []string{
 			"http://localhost:8000/spid-sso",
 		},
@@ -55,7 +55,7 @@ func main() {
 	}
 
 	// Load Identity Providers from their XML metadata
-	err := sp.LoadIDPMetadata("idp_metadata")
+	err := sp.LoadIDPMetadata("../sample_data/idp_metadata")
 	if err != nil {
 		fmt.Print("Failed to load IdP metadata: ")
 		fmt.Println(err)

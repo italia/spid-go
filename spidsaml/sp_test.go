@@ -3,10 +3,11 @@ package spidsaml
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"github.com/beevik/etree"
-	"github.com/crewjam/go-xmlsec"
 	"strings"
 	"testing"
+
+	"github.com/beevik/etree"
+	"github.com/crewjam/go-xmlsec"
 )
 
 func TestSP_Key(t *testing.T) {
@@ -21,12 +22,12 @@ func TestSP_Key(t *testing.T) {
 			name:      "Gives error when key file does not exist",
 		},
 		{
-			keyFile:   "../fixtures/key.rsa.pem",
+			keyFile:   "../sample_data/key.rsa.pem",
 			returnErr: false,
 			name:      "Can read a key in PKS1 format",
 		},
 		{
-			keyFile:   "../fixtures/key.pem",
+			keyFile:   "../sample_data/key.pem",
 			returnErr: false,
 			name:      "Can read a key in PKS8 format",
 		},
@@ -56,7 +57,7 @@ func TestSP_Cert(t *testing.T) {
 			name:      "Gives error when certificate file does not exist",
 		},
 		{
-			certFile:  "../fixtures/crt.pem",
+			certFile:  "../sample_data/crt.pem",
 			returnErr: false,
 			name:      "Can read a certificate file",
 		},
@@ -182,8 +183,8 @@ func TestSP_KeyPEM(t *testing.T) {
 func createSPForTes() *SP {
 	return &SP{
 		EntityID: "https://spid.comune.roma.it",
-		KeyFile:  "../fixtures/key.pem",
-		CertFile: "../fixtures/crt.pem",
+		KeyFile:  "../sample_data/key.pem",
+		CertFile: "../sample_data/crt.pem",
 		AssertionConsumerServices: []string{
 			"http://localhost:8000/spid-sso",
 		},
@@ -208,7 +209,7 @@ func readCert(certFile string) (key *x509.Certificate, err interface{}) {
 	defer func() {
 		err = recover()
 	}()
-	sp := &SP {
+	sp := &SP{
 		CertFile: certFile,
 	}
 	return sp.Cert(), nil
@@ -218,7 +219,7 @@ func readKey(keyFile string) (key *rsa.PrivateKey, err interface{}) {
 	defer func() {
 		err = recover()
 	}()
-	sp := &SP {
+	sp := &SP{
 		KeyFile: keyFile,
 	}
 	return sp.Key(), nil

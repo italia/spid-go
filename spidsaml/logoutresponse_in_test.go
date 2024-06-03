@@ -26,7 +26,7 @@ func TestSP_ParseLogoutResponse(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			sp := createSPForTes()
-			sp.LoadIDPFromXMLFile("../fixtures/idp_metadata/testenv2_metadata.xml")
+			sp.LoadIDPFromXMLFile("../sample_data/idp_metadata/testenv2_metadata.xml")
 
 			request, err := http.NewRequest(http.MethodGet, logoutUrl(), bytes.NewReader(creatTestLogoutResponseXml()))
 			if err != nil {
