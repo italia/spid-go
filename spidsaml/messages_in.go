@@ -16,7 +16,8 @@ import (
 	"strings"
 
 	"github.com/beevik/etree"
-	xmlsec "github.com/crewjam/go-xmlsec"
+	dsig "github.com/russellhaering/goxmldsig"
+	"github.com/russellhaering/goxmldsig/etreeutils"
 )
 
 type inMessage struct {
@@ -32,7 +33,7 @@ func (msg *inMessage) SetXML(xml []byte) error {
 	return msg.doc.ReadFromBytes(xml)
 }
 
-func (msg *inMessage) parse(r *http.Request, param string) error {
+func (msg *inMessage) read(r *http.Request, param string) error {
 	var xml []byte
 	var err error
 
@@ -91,11 +92,10 @@ func (msg *inMessage) matchIncomingIDP() error {
 func (msg *inMessage) validateSignature(r *http.Request, param string) error {
 	switch r.Method {
 	case "POST":
-		return msg.validateSignatureForPost()
+		return msg.validateSignatureForPost(msg.doc.Root())
 
 	case "GET":
-		query := r.URL.Query()
-		return msg.validateSignatureForGet(param, query)
+		return msg.validateSignatureForGet(param, r.URL.Query())
 
 	default:
 		return fmt.Errorf("Invalid HTTP method: %s", r.Method)
@@ -153,24 +153,38 @@ func (msg *inMessage) validateSignatureForGet(param string, query url.Values) er
 	return err
 }
 
-func (msg *inMessage) validateSignatureForPost() error {
-	var err error
-	for _, cert := range msg.IDP.CertPEM() {
-		err = xmlsec.Verify(cert, msg.XML, xmlsec.SignatureOptions{
-			XMLID: []xmlsec.XMLIDOption{
-				{
-					ElementName:      msg.doc.Root().Tag,
-					ElementNamespace: "",
-					AttributeName:    "ID",
-				},
-			},
-		})
-		if err == nil {
-			return nil
-		}
+func (msg *inMessage) validateSignatureForPost(el *etree.Element) error {
+	// Check presence of signature
+	sigEl := msg.doc.FindElement("//ds:Signature")
+	if sigEl == nil {
+		return errors.New("signature element not found")
 	}
-	return fmt.Errorf("%s signature verification failed: %s",
-		msg.doc.Root().Tag, err.Error())
+
+	// Initialize validation
+	certificateStore := dsig.MemoryX509CertificateStore{
+		Roots: msg.IDP.Certs,
+	}
+	validationContext := dsig.NewDefaultValidationContext(&certificateStore)
+	validationContext.IdAttribute = "ID"
+
+	ctx, err := etreeutils.NSBuildParentContext(el)
+	if err != nil {
+		return fmt.Errorf("cannot validate signature on %s: %v", el.Tag, err)
+	}
+	ctx, err = ctx.SubContext(el)
+	if err != nil {
+		return fmt.Errorf("cannot validate signature on %s: %v", el.Tag, err)
+	}
+	el, err = etreeutils.NSDetatch(ctx, el)
+	if err != nil {
+		return fmt.Errorf("cannot validate signature on %s: %v", el.Tag, err)
+	}
+
+	if _, err := validationContext.Validate(el); err != nil {
+		return fmt.Errorf("cannot validate signature on %s: %v", el.Tag, err)
+	}
+
+	return nil
 }
 
 // ID returns the message ID.

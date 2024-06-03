@@ -17,7 +17,7 @@ type LogoutRequestIn struct {
 func (sp *SP) ParseLogoutRequest(r *http.Request) (*LogoutRequestIn, error) {
 	response := &LogoutRequestIn{}
 	response.SP = sp
-	err := response.parse(r, "SAMLRequest")
+	err := response.read(r, "SAMLRequest")
 	if err != nil {
 		return nil, err
 	}

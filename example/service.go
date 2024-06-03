@@ -170,8 +170,9 @@ func spidLogin(w http.ResponseWriter, r *http.Request) {
 func spidSSO(w http.ResponseWriter, r *http.Request) {
 	// Parse and verify the incoming assertion.
 	r.ParseForm()
-	response, err := sp.ParseResponse(
+	response, err := spidsaml.ParseResponse(
 		r,
+		sp,
 		authnReqID, // Match the ID of our authentication request for increased security.
 	)
 

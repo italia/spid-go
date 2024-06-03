@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
-
-	xmlsec "github.com/crewjam/go-xmlsec"
 )
 
 // Response represents an incoming SPID Response/Assertion message. We get such messages after an AuthnRequest (Single Sign-On).
@@ -19,10 +18,10 @@ type Response struct {
 // method), so this method may return an error.
 // A second argument can be supplied, containing the C<ID> of the request message;
 // in this case validation will also check the InResponseTo attribute.
-func (sp *SP) ParseResponse(r *http.Request, inResponseTo string) (*Response, error) {
+func ParseResponse(r *http.Request, sp *SP, inResponseTo string) (*Response, error) {
 	response := &Response{}
 	response.SP = sp
-	err := response.parse(r, "SAMLResponse")
+	err := response.read(r, "SAMLResponse")
 	if err != nil {
 		return nil, err
 	}
@@ -79,32 +78,22 @@ func (response *Response) validate(inResponseTo string) error {
 				response.AssertionInResponseTo(), inResponseTo)
 		}
 
-		for _, cert := range response.IDP.CertPEM() {
-			err = xmlsec.Verify(cert, response.XML, xmlsec.SignatureOptions{
-				XMLID: []xmlsec.XMLIDOption{
-					{
-						ElementName:      "Assertion",
-						ElementNamespace: "",
-						AttributeName:    "ID",
-					},
-					{
-						ElementName:      "Response",
-						ElementNamespace: "",
-						AttributeName:    "ID",
-					},
-				},
-			})
-			if (err == nil) {
-				break;
+		// SPID regulations require that Assertion is signed, while Response can be not signed
+		responseSigEl := response.doc.FindElement("/Response/Signature")
+		if responseSigEl != nil {
+			err = response.inMessage.validateSignatureForPost(responseSigEl.Parent())
+			if err != nil {
+				return fmt.Errorf("response signature verification failed: %s", err.Error())
 			}
 		}
-		if err != nil {
-			return fmt.Errorf("Signature verification failed: %s", err.Error())
-		}
 
-		// SPID regulations require that Assertion is signed, while Response can be not signed
-		if response.doc.FindElement("/Response/Assertion/Signature") == nil {
-			return fmt.Errorf("Assertion is not signed")
+		assertionSigEl := response.doc.FindElement("/Response/Assertion/Signature")
+		if assertionSigEl == nil {
+			return fmt.Errorf("assertion is not signed")
+		}
+		err = response.inMessage.validateSignatureForPost(assertionSigEl.Parent())
+		if err != nil {
+			return fmt.Errorf("assertion signature verification failed: %s", err.Error())
 		}
 
 		now := response.clock.Now().UTC()
@@ -250,9 +239,10 @@ func (response *Response) SubjectConfirmationDataNotOnOrAfter() (time.Time, erro
 // Level returns the SPID level specified in the assertion.
 func (response *Response) Level() int {
 	ref := response.doc.FindElement("/Response/Assertion/AuthnStatement/AuthnContext/AuthnContextClassRef").Text()
+	ref = strings.TrimSpace(ref)
 	i, err := strconv.Atoi(string(ref[len(ref)-1]))
 	if err != nil {
-		return 0
+		return -1
 	}
 	return i
 }

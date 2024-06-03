@@ -35,7 +35,7 @@ func TestInMessage_validateSignatureForPost(t *testing.T) {
 
 			msg.SetXML(tc.xml)
 
-			err := msg.validateSignatureForPost()
+			err := msg.validateSignatureForPost(msg.doc.Root())
 
 			if err != nil && !tc.returnErr {
 				t.Error("Failed to validate response with error ", err)
@@ -47,4 +47,3 @@ func TestInMessage_validateSignatureForPost(t *testing.T) {
 		})
 	}
 }
-
