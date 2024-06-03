@@ -184,7 +184,7 @@ func readCert(certFile string) (key *x509.Certificate, err interface{}) {
 	sp := &SP{
 		CertFile: certFile,
 	}
-	return sp.Cert(), nil
+	return sp.GetCert(), nil
 }
 
 func readKey(keyFile string) (key *rsa.PrivateKey, err interface{}) {
@@ -194,7 +194,7 @@ func readKey(keyFile string) (key *rsa.PrivateKey, err interface{}) {
 	sp := &SP{
 		KeyFile: keyFile,
 	}
-	return sp.Key(), nil
+	return sp.GetKey(), nil
 }
 
 func contains(array []string, value string) bool {

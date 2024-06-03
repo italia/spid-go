@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"io/ioutil"
 	"os"
 	"text/template"
 
@@ -45,7 +44,9 @@ const (
 // SP represents our Service Provider
 type SP struct {
 	EntityID                   string
+	Key                        []byte
 	KeyFile                    string
+	Cert                       []byte
 	CertFile                   string
 	AssertionConsumerServices  []string
 	SingleLogoutServices       map[string]SAMLBinding
@@ -57,25 +58,32 @@ type SP struct {
 	ContactPerson              ContactPerson
 }
 
-// CertPEM returns the of this Service Provider. certificate in PEM format.
-func (sp *SP) CertPEM() []byte {
-	byteValue, err := ioutil.ReadFile(sp.CertFile)
-	if err != nil {
-		panic(err)
+// CertPEM returns the certificate of this Service Provider in PEM format.
+func (sp *SP) GetCertPEM() []byte {
+	var block = &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: sp.GetCert().Raw,
 	}
-	return byteValue
+	return pem.EncodeToMemory(block)
 }
 
 // Cert returns the certificate of this Service Provider.
-func (sp *SP) Cert() *x509.Certificate {
+func (sp *SP) GetCert() *x509.Certificate {
 	if sp._cert == nil {
-		// read file as a byte array
-		byteValue := sp.CertPEM()
+		if len(sp.Cert) == 0 {
+			// read file as a byte array
+			var err error
+			sp.Cert, err = os.ReadFile(sp.CertFile)
+			if err != nil {
+				panic(err)
+			}
+		}
 
-		block, _ := pem.Decode(byteValue)
+		block, _ := pem.Decode(sp.Cert)
 		if block == nil || block.Type != "CERTIFICATE" {
 			panic("failed to parse certificate PEM")
 		}
+		sp.Cert = []byte{}
 
 		var err error
 		sp._cert, err = x509.ParseCertificate(block.Bytes)
@@ -87,15 +95,22 @@ func (sp *SP) Cert() *x509.Certificate {
 }
 
 // Key returns the private key of this Service Provider
-func (sp *SP) Key() *rsa.PrivateKey {
+func (sp *SP) GetKey() *rsa.PrivateKey {
 	if sp._key == nil {
-		// read file as a byte array
-		byteValue, _ := ioutil.ReadFile(sp.KeyFile)
+		if len(sp.Key) == 0 {
+			// read file as a byte array
+			var err error
+			sp.Key, err = os.ReadFile(sp.KeyFile)
+			if err != nil {
+				panic(err)
+			}
+		}
 
-		block, _ := pem.Decode(byteValue)
+		block, _ := pem.Decode(sp.Key)
 		if block == nil {
 			panic("failed to parse private key from PEM file " + sp.KeyFile)
 		}
+		sp.Key = []byte{}
 
 		var err error
 
@@ -123,8 +138,8 @@ func (sp *SP) Key() *rsa.PrivateKey {
 }
 
 // KeyPEM returns the private key of this Service Provider in PEM format
-func (sp *SP) KeyPEM() []byte {
-	key := sp.Key()
+func (sp *SP) GetKeyPEM() []byte {
+	key := sp.GetKey()
 	var block = &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
@@ -223,7 +238,7 @@ func (sp *SP) Metadata() string {
 	}{
 		ID,
 		sp,
-		base64.StdEncoding.EncodeToString(sp.Cert().Raw),
+		base64.StdEncoding.EncodeToString(sp.GetCert().Raw),
 	}
 
 	t := template.Must(template.New("metadata").Parse(tmpl))
@@ -241,7 +256,7 @@ func (sp *SP) Metadata() string {
 
 func (sp *SP) GetSigningContext() *dsig.SigningContext {
 	// Prepare key and certificate
-	keyPair, err := tls.X509KeyPair(sp.CertPEM(), sp.KeyPEM())
+	keyPair, err := tls.X509KeyPair(sp.GetCertPEM(), sp.GetKeyPEM())
 	if err != nil {
 		panic(err)
 	}
