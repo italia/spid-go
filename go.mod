@@ -1,4 +1,4 @@
-module github.com/f-lombardo/spid-go
+module github.com/italia/spid-go
 
 go 1.16
 
