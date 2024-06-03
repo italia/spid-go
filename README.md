@@ -10,27 +10,36 @@ This Go package is aimed at implementing SPID Service Providers. [SPID](https://
 
 ## Getting Started
 
-The [example/](example/) directory contains a demo web application. Just follow these steps in order to test it quickly:
+The [example/](example/) directory contains a demo web application. Just follow these steps in order to test it with [spid-saml-check](https://github.com/italia/spid-saml-check):
 
-1. Install the [go-xmlsec](https://github.com/crewjam/go-xmlsec) dependency. While `go get` should get everything else you need, go-xmlsec depends on a C library so you should install it manually. It's quick. See its [README](https://github.com/crewjam/go-xmlsec) for details. (You might need to run `export CGO_CFLAGS_ALLOW=".*"` first to make it compile correctly.)
-
-2. Run the demo application:
+1. Clone this package:
    ```bash
-   cd example/
+   git clone github.com/italia/spid-go
+   cd spid-go
+   ```
+
+2. Install and run [spid-saml-check](https://github.com/italia/spid-saml-check) as a Docker container (note: [this bug](https://github.com/italia/spid-saml-check/issues/280) in spid-saml-check prevents it from working with a non-HTTPS Service Provider so you'll have to apply a patch).
+
+3. Get the Identity Provider metadata exposed by spid-saml-check:
+   ```bash
+   curl -o sample_data/idp_metadata/spid-saml-check.xml https://localhost:8443/metadata.xml
+   ```
+
+4. Run the demo Service Provider provided with this package:
+   ```bash
+   cd example
    go run service.go
    ```
 
-3. Connect to [http://localhost:8000/metadata](http://localhost:8000/metadata) and grab the metadata of the demo Service Provider.
+5. Open the spid-saml-check interface at https://localhost:8443 and load the Service Provider metadata. Since spid-saml-check is running inside a Docker container, you'll have to use this URL: http://host.docker.internal:8000/metadata (if you want to open it from your browser, just use http://localhost:8000/metadata)
 
-4. Configure [spid-testenv2](https://github.com/italia/spid-testenv2) and load the above Service Provider metadata into it.
+6. Perform (and enjoy) the metadata validation on spid-saml-check.
 
-5. Get the metadata file of the spid-testenv2 demo Identity Provider (its default location is [http://localhost:8088/metadata](http://localhost:8088/metadata)) and save it in the example/idp_metadata directory.
+7. Open http://localhost:8000 and proceed with the full authentication test.
 
-6. Launch [http://localhost:8000](http://localhost:8000) and enjoy your SPID demo.
+## Generating your own key
 
-## Using different keys
-
-If you want to use different keys/certificate:
+If you want to generate your own key and certificate:
 
 1. Use the [SPID compliant certificate builder](https://github.com/italia/spid-compliant-certificates)
    
@@ -46,7 +55,7 @@ If you want to use different keys/certificate:
 |:---|:---|
 |**Metadata:**||
 |parsing of IdP XML metadata (1.2.2.4)|✓|
-|support for multiple signing certificates in IdP XML metadata (1.2.2.4)||
+|support for multiple signing certificates in IdP XML metadata (1.2.2.4)|✓|
 |parsing of AA XML metadata (2.2.4)||
 |SP XML metadata generation (1.3.2)|✓|
 |**AuthnRequest generation (1.2.2.1):**||
@@ -136,4 +145,4 @@ If you want to use different keys/certificate:
 ## Authors
 
 * [Alessandro Ranellucci](https://github.com/alranel) (maintainer) - [Team per la Trasformazione Digitale](https://teamdigitale.governo.it/) - Presidenza del Consiglio dei Ministri
-  * [alranel@teamdigitale.governo.it](alranel@teamdigitale.governo.it)
+  * [a.ranellucci@governo.it](a.ranellucci@governo.it)
