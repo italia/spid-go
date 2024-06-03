@@ -1,0 +1,194 @@
+package spidsaml
+
+import (
+	"bytes"
+	"compress/flate"
+	"crypto"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/beevik/etree"
+	xmlsec "github.com/crewjam/go-xmlsec"
+)
+
+type inMessage struct {
+	protocolMessage
+	XML        []byte
+	doc        *etree.Document
+	RelayState string
+}
+
+func (msg *inMessage) SetXML(xml []byte) error {
+	msg.XML = xml
+	msg.doc = etree.NewDocument()
+	return msg.doc.ReadFromBytes(xml)
+}
+
+func (msg *inMessage) parse(r *http.Request, param string) error {
+	var xml []byte
+	var err error
+
+	switch r.Method {
+	case "POST":
+		xml, err = _readPost(r, param)
+	case "GET":
+		xml, err = _readGet(r, param)
+	default:
+		err = fmt.Errorf("Invalid HTTP method: %s", r.Method)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	msg.RelayState = r.URL.Query().Get("RelayState")
+
+	return msg.SetXML(xml)
+}
+
+func _readGet(r *http.Request, param string) ([]byte, error) {
+	samlEncoding := r.URL.Query().Get("SAMLEncoding")
+	if samlEncoding != "" && samlEncoding != "urn:oasis:names:tc:SAML:2.0:bindings:URL-Encoding:DEFLATE" {
+		return nil, errors.New("Invalid SAMLEncoding")
+	}
+
+	payload, err := base64.StdEncoding.DecodeString(r.URL.Query().Get(param))
+	if err != nil {
+		return nil, err
+	}
+
+	b := bytes.NewReader(payload)
+	r2 := flate.NewReader(b)
+	defer r2.Close()
+	return ioutil.ReadAll(r2)
+}
+
+func _readPost(r *http.Request, param string) ([]byte, error) {
+	r.ParseForm()
+	return base64.StdEncoding.DecodeString(r.Form.Get(param))
+}
+
+func (msg *inMessage) matchIncomingIDP() error {
+	var err error
+	msg.IDP, err = msg.SP.GetIDP(strings.TrimSpace(msg.Issuer()))
+	if err != nil {
+		return err
+	}
+
+	// TODO: validate IssueInstant
+
+	return nil
+}
+
+func (msg *inMessage) validateSignature(r *http.Request, param string) error {
+	switch r.Method {
+	case "POST":
+		return msg.validateSignatureForPost()
+
+	case "GET":
+		query := r.URL.Query()
+		return msg.validateSignatureForGet(param, query)
+
+	default:
+		return fmt.Errorf("Invalid HTTP method: %s", r.Method)
+	}
+}
+
+func (msg *inMessage) validateSignatureForGet(param string, query url.Values) error {
+	// In order to verify the signature we need to concatenate arguments
+	// according to a predefined order (the request URI might be ordered
+	// in a different way)
+	var params []string
+	for _, key := range []string{param, "RelayState", "SigAlg"} {
+		if _, exists := query[key]; exists {
+			params = append(params, fmt.Sprintf("%s=%s",
+				key, url.QueryEscape(query.Get(key))))
+		}
+	}
+
+	// Encode the payload
+	payload := []byte(strings.Join(params, "&"))
+
+	// Decode the signature from Base64
+	sig, err := base64.StdEncoding.DecodeString(query.Get("Signature"))
+	if err != nil {
+		return err
+	}
+
+	// Compute the hash of the payload according to the declared SigAlg
+	var h []byte
+	var hashAlg crypto.Hash
+	if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" {
+		h2 := sha256.Sum256(payload)
+		h = h2[:]
+		hashAlg = crypto.SHA256
+	} else if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha384" {
+		h2 := sha512.Sum384(payload)
+		h = h2[:]
+		hashAlg = crypto.SHA384
+	} else if query.Get("SigAlg") == "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512" {
+		h2 := sha512.Sum512(payload)
+		h = h2[:]
+		hashAlg = crypto.SHA512
+	} else {
+		return fmt.Errorf("Unknown SigAlg: %s", query.Get("SigAlg"))
+	}
+
+	// Verify the signature
+	for _, cert := range msg.IDP.Certs {
+		err = rsa.VerifyPKCS1v15(cert.PublicKey.(*rsa.PublicKey), hashAlg, h, sig)
+		if err == nil {
+			return nil
+		}
+	}
+
+	return err
+}
+
+func (msg *inMessage) validateSignatureForPost() error {
+	var err error
+	for _, cert := range msg.IDP.CertPEM() {
+		err = xmlsec.Verify(cert, msg.XML, xmlsec.SignatureOptions{
+			XMLID: []xmlsec.XMLIDOption{
+				{
+					ElementName:      msg.doc.Root().Tag,
+					ElementNamespace: "",
+					AttributeName:    "ID",
+				},
+			},
+		})
+		if err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s signature verification failed: %s",
+		msg.doc.Root().Tag, err.Error())
+}
+
+// ID returns the message ID.
+func (msg *inMessage) ID() string {
+	return msg.doc.Root().SelectAttrValue("ID", "")
+}
+
+// Issuer returns the value of the <Issuer> element.
+func (msg *inMessage) Issuer() string {
+	return msg.doc.FindElement("/*/Issuer").Text()
+}
+
+// InResponseTo returns the value of the <InResponseTo> element.
+func (msg *inMessage) InResponseTo() string {
+	return msg.doc.Root().SelectAttrValue("InResponseTo", "")
+}
+
+// Destination returns the value of the <Destination> element.
+func (msg *inMessage) Destination() string {
+	return msg.doc.Root().SelectAttrValue("Destination", "")
+}
