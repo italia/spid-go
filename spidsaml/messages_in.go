@@ -166,6 +166,9 @@ func (msg *inMessage) validateSignatureForPost(el *etree.Element) error {
 	}
 	validationContext := dsig.NewDefaultValidationContext(&certificateStore)
 	validationContext.IdAttribute = "ID"
+	if msg.clock != nil {
+		validationContext.Clock = msg.clock
+	}
 
 	ctx, err := etreeutils.NSBuildParentContext(el)
 	if err != nil {

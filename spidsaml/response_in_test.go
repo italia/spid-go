@@ -3,20 +3,20 @@ package spidsaml
 import (
 	"testing"
 	"time"
+
+	dsig "github.com/russellhaering/goxmldsig"
 )
 
 func TestResponse_verify_response_from_IDP(t *testing.T) {
 	const REAL_REQUESTID = "_56b83874b956b3140a8d6767072f546c"
 	cases := []struct {
-		testClock *Clock
+		testClock *dsig.Clock
 		requestId string
 		returnErr bool
 		name      string
 	}{
 		{
-			testClock: &Clock{
-				instant: time.Date(2021, time.Month(3), 18, 16, 37, 0, 0, time.UTC),
-			},
+			testClock: dsig.NewFakeClockAt(time.Date(2021, time.Month(3), 18, 16, 37, 0, 0, time.UTC)),
 			requestId: REAL_REQUESTID,
 			returnErr: false,
 			name:      "Can verfy a response in the correct time interval",

@@ -29,11 +29,7 @@ const (
 func (sp *SP) NewLogoutResponse(logoutreq *LogoutRequestIn, status LogoutStatus) (*LogoutResponseOut, error) {
 	res := new(LogoutResponseOut)
 	res.SP = sp
-	var err error
 	res.IDP = logoutreq.IDP
-	if err != nil {
-		return nil, err
-	}
 	res.ID = generateMessageID()
 	res.InResponseTo = logoutreq.ID()
 	return res, nil

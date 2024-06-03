@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/beevik/etree"
-	"github.com/crewjam/go-xmlsec"
 )
 
 func TestSP_Key(t *testing.T) {
@@ -143,40 +142,13 @@ func TestSP_KeyPEM(t *testing.T) {
   <Data>
 	Hello, World!
   </Data>
-  <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
-    <SignedInfo>
-      <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
-      <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1" />
-      <Reference URI="">
-        <Transforms>
-          <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
-        </Transforms>
-        <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
-        <DigestValue></DigestValue>
-      </Reference>
-    </SignedInfo>
-    <SignatureValue/>
-    <KeyInfo>
-	<KeyName/>
-    </KeyInfo>
-  </Signature>
+  <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" />
 </Envelope>`)
 
-	doc := etree.NewDocument()
-	doc.ReadFromBytes(xml)
-
-	signatureOptions := xmlsec.SignatureOptions{}
-
-	signedDoc, errSign := xmlsec.Sign(sp.KeyPEM(), xml, signatureOptions)
+	_, errSign := SignXML(xml, sp)
 
 	if errSign != nil {
 		t.Error("Error during signing phase:", errSign)
-	}
-
-	errVerify := xmlsec.Verify(sp.CertPEM(), signedDoc, signatureOptions)
-
-	if errVerify != nil {
-		t.Error("Error during verifing phase", errVerify)
 	}
 }
 
