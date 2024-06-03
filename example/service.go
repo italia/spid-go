@@ -28,12 +28,15 @@ var authnReqID, logoutReqID string
 func main() {
 	// Initialize our SPID object with information about this Service Provider
 	sp = &spidsaml.SP{
+		// Required fields
 		EntityID: "https://spid.comune.roma.it",
 		KeyFile:  "../sample_data/key.pem",
 		CertFile: "../sample_data/crt.pem",
 		AssertionConsumerServices: []string{
 			"http://localhost:8000/spid-sso",
 		},
+
+		// The following fields are only needed for metadata generation
 		SingleLogoutServices: map[string]spidsaml.SAMLBinding{
 			"http://localhost:8000/spid-slo": spidsaml.HTTPRedirect,
 		},
