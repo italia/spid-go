@@ -55,7 +55,7 @@ func main() {
 	}
 
 	// Load Identity Providers from their XML metadata
-	err := sp.LoadIDPMetadata("../sample_data/idp_metadata")
+	err := sp.LoadIDPMetadata("../sample_data/test_idp")
 	if err != nil {
 		fmt.Print("Failed to load IdP metadata: ")
 		fmt.Println(err)

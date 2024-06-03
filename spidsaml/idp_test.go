@@ -35,10 +35,9 @@ func TestNewIDPFromXML(t *testing.T) {
 }
 
 func TestSP_LoadIDPMetadata(t *testing.T) {
-	sp := &SP{
-	}
+	sp := &SP{}
 
-	if err := sp.LoadIDPMetadata("../idp_metadata"); err != nil {
+	if err := sp.LoadIDPMetadata("../sample_data/idp_metadata"); err != nil {
 		t.Error(err)
 	}
 
@@ -59,17 +58,16 @@ func TestSP_LoadIDPMetadata(t *testing.T) {
 	}
 
 	for _, k := range idpIds {
-		if idp, _ :=sp.GetIDP(k); idp == nil  {
+		if idp, _ := sp.GetIDP(k); idp == nil {
 			t.Errorf("Metadata for %s not found", k)
 		}
 	}
 }
 
 func TestSP_AnIDPCanHaveMultipleCertificates(t *testing.T) {
-	sp := &SP{
-	}
+	sp := &SP{}
 
-	if err := sp.LoadIDPFromXMLFile("../idp_metadata/aruba.xml"); err != nil {
+	if err := sp.LoadIDPFromXMLFile("../sample_data/idp_metadata/aruba.xml"); err != nil {
 		t.Error(err)
 	}
 

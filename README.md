@@ -22,7 +22,7 @@ The [example/](example/) directory contains a demo web application. Just follow 
 
 3. Get the Identity Provider metadata exposed by spid-saml-check:
    ```bash
-   curl -o sample_data/idp_metadata/spid-saml-check.xml https://localhost:8443/metadata.xml
+   curl -o sample_data/test_idp/spid-saml-check.xml https://localhost:8443/metadata.xml
    ```
 
 4. Run the demo Service Provider provided with this package:

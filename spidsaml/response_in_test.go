@@ -37,7 +37,7 @@ func TestResponse_verify_response_from_IDP(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			sp := createSPForTes()
-			sp.LoadIDPFromXMLFile("../sample_data/idp_metadata/testenv2_metadata.xml")
+			sp.LoadIDPFromXMLFile("../sample_data/test_idp/testenv2_metadata.xml")
 			response := &Response{
 				inMessage: inMessage{
 					protocolMessage: protocolMessage{
