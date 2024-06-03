@@ -3,6 +3,7 @@ package spidsaml
 import (
 	"bytes"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
@@ -10,6 +11,8 @@ import (
 	"io/ioutil"
 	"os"
 	"text/template"
+
+	dsig "github.com/russellhaering/goxmldsig"
 )
 
 // AttributeConsumingService defines, well, an AttributeConsumingService.
@@ -234,4 +237,19 @@ func (sp *SP) Metadata() string {
 	}
 
 	return string(signedDoc)
+}
+
+func (sp *SP) GetSigningContext() *dsig.SigningContext {
+	// Prepare key and certificate
+	keyPair, err := tls.X509KeyPair(sp.CertPEM(), sp.KeyPEM())
+	if err != nil {
+		panic(err)
+	}
+	keyStore := dsig.TLSCertKeyStore(keyPair)
+
+	ctx := dsig.NewDefaultSigningContext(keyStore)
+	ctx.IdAttribute = "ID"
+	ctx.Canonicalizer = dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList("")
+	ctx.SetSignatureMethod(dsig.RSASHA256SignatureMethod)
+	return ctx
 }

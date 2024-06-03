@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/flate"
 	"crypto/rand"
-	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"time"
 
 	"github.com/beevik/etree"
-	dsig "github.com/russellhaering/goxmldsig"
 )
 
 // outMessage is the base class for all outgoing message
@@ -44,21 +42,6 @@ func (msg *outMessage) IssueInstant() *time.Time {
 
 func (msg *outMessage) IssueInstantString() string {
 	return msg.IssueInstant().Format("2006-01-02T15:04:05.000Z")
-}
-
-func getSigningContext(sp *SP) *dsig.SigningContext {
-	// Prepare key and certificate
-	keyPair, err := tls.X509KeyPair(sp.CertPEM(), sp.KeyPEM())
-	if err != nil {
-		panic(err)
-	}
-	keyStore := dsig.TLSCertKeyStore(keyPair)
-
-	ctx := dsig.NewDefaultSigningContext(keyStore)
-	ctx.IdAttribute = "ID"
-	ctx.Canonicalizer = dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList("")
-	ctx.SetSignatureMethod(dsig.RSASHA256SignatureMethod)
-	return ctx
 }
 
 // RedirectURL crafts the URL to be used for sending the current message via a HTTPRedirect binding
@@ -97,7 +80,7 @@ func (msg *outMessage) RedirectURL(baseurl string, xml []byte, param string) str
 	query += "&SigAlg=" + url.QueryEscape("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
 
 	// sign request
-	signingContext := getSigningContext(msg.SP)
+	signingContext := msg.SP.GetSigningContext()
 	sig, err := signingContext.SignString(query)
 	if err != nil {
 		panic(err)
@@ -110,7 +93,7 @@ func (msg *outMessage) RedirectURL(baseurl string, xml []byte, param string) str
 }
 
 func SignXML(xml []byte, sp *SP) ([]byte, error) {
-	signingContext := getSigningContext(sp)
+	signingContext := sp.GetSigningContext()
 
 	// Get the position of the signature element and remove it so that it does not
 	// affect the digest
