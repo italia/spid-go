@@ -39,6 +39,7 @@ func (msg *inMessage) read(r *http.Request, param string) error {
 
 	switch r.Method {
 	case "POST":
+		r.ParseForm()
 		xml, err = _readPost(r, param)
 	case "GET":
 		xml, err = _readGet(r, param)
@@ -50,7 +51,7 @@ func (msg *inMessage) read(r *http.Request, param string) error {
 		return err
 	}
 
-	msg.RelayState = r.URL.Query().Get("RelayState")
+	msg.RelayState = r.FormValue("RelayState")
 
 	return msg.SetXML(xml)
 }
@@ -73,7 +74,6 @@ func _readGet(r *http.Request, param string) ([]byte, error) {
 }
 
 func _readPost(r *http.Request, param string) ([]byte, error) {
-	r.ParseForm()
 	return base64.StdEncoding.DecodeString(r.Form.Get(param))
 }
 
