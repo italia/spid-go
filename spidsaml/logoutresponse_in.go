@@ -14,24 +14,20 @@ type LogoutResponseIn struct {
 }
 
 // ParseLogoutResponse parses an http.Request and instantiates a LogoutResponseIn.
-func (sp *SP) ParseLogoutResponse(r *http.Request, inResponseTo string) (*LogoutResponseIn, error) {
+func (sp *SP) ParseLogoutResponse(r *http.Request) (*LogoutResponseIn, error) {
 	response := &LogoutResponseIn{}
 	response.SP = sp
 	err := response.read(r, "SAMLResponse")
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("%s\n", response.XML)
-	err = response.validate(r, inResponseTo)
-	if err != nil {
-		return nil, err
-	}
+	//fmt.Printf("%s\n", response.XML)
 
 	return response, nil
 }
 
 // validate performs validation on this message.
-func (logoutres *LogoutResponseIn) validate(r *http.Request, inResponseTo string) error {
+func (logoutres *LogoutResponseIn) Validate(r *http.Request, inResponseTo string) error {
 	err := logoutres.inMessage.matchIncomingIDP()
 	if err != nil {
 		return err

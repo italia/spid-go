@@ -50,7 +50,7 @@ func TestResponse_verify_response_from_IDP(t *testing.T) {
 
 			response.SetXML(createTestXml())
 
-			err := response.validate(tc.requestId)
+			err := response.Validate(tc.requestId)
 			if err != nil && !tc.returnErr {
 				t.Error("Failed to validate response with error ", err)
 			}

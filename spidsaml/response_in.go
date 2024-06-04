@@ -16,9 +16,7 @@ type Response struct {
 // ParseResponse parses a Response/Assertion.
 // Validation is performed (see the documentation for the Response::validate()
 // method), so this method may return an error.
-// A second argument can be supplied, containing the C<ID> of the request message;
-// in this case validation will also check the InResponseTo attribute.
-func ParseResponse(r *http.Request, sp *SP, inResponseTo string) (*Response, error) {
+func ParseResponse(r *http.Request, sp *SP) (*Response, error) {
 	response := &Response{}
 	response.SP = sp
 	err := response.read(r, "SAMLResponse")
@@ -26,16 +24,13 @@ func ParseResponse(r *http.Request, sp *SP, inResponseTo string) (*Response, err
 		return nil, err
 	}
 
-	err = response.validate(inResponseTo)
-	if err != nil {
-		return nil, err
-	}
-
 	return response, nil
 }
 
-// validate performs validation on this message, that is a response from an IDP to a login request
-func (response *Response) validate(inResponseTo string) error {
+// Validate performs validation on this message, that is a response from an IDP to a login request
+// An argument is required, containing the C<ID> of the authnreq message,
+// that will be checked against the InResponseTo field.
+func (response *Response) Validate(inResponseTo string) error {
 	err := response.inMessage.matchIncomingIDP()
 	if err != nil {
 		return err

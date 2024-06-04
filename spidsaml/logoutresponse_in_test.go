@@ -39,8 +39,11 @@ func TestSP_ParseLogoutResponse(t *testing.T) {
 			q.Add("Signature", tc.signature)
 			request.URL.RawQuery = q.Encode()
 
-			_, err = sp.ParseLogoutResponse(request, "_e8fde0492b0a41714b5a4d1d35616446")
-
+			res, err := sp.ParseLogoutResponse(request)
+			if err != nil && !tc.returnErr {
+				t.Error("Failed to parse response with error ", err)
+			}
+			err = res.Validate(request, "_e8fde0492b0a41714b5a4d1d35616446")
 			if err != nil && !tc.returnErr {
 				t.Error("Failed to validate response with error ", err)
 			}

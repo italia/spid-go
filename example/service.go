@@ -171,29 +171,32 @@ func spidLogin(w http.ResponseWriter, r *http.Request) {
 // During SSO, the Identity Provider will redirect user to this URL POSTing
 // the resulting assertion.
 func spidSSO(w http.ResponseWriter, r *http.Request) {
+	// Clear the ID of the outgoing Authnreq, since in this demo we're using a
+	// global variable for it.
+	defer func() { authnReqID = "" }()
+
 	// Parse and verify the incoming assertion.
 	r.ParseForm()
-	response, err := spidsaml.ParseResponse(
-		r,
-		sp,
-		authnReqID, // Match the ID of our authentication request for increased security.
-	)
+	response, err := spidsaml.ParseResponse(r, sp)
+	if err != nil {
+		fmt.Printf("Bad Response received: %s\n", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-	// Clear the ID of the outgoing Authnreq, regardless of the result.
-	authnReqID = ""
+	// Validate the response, matching the ID of the authentication request
+	err = response.Validate(authnReqID)
+	if err != nil {
+		fmt.Printf("Bad Response received: %s\n", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	// TODO: better error handling:
 	// - authentication failure
 	// - authentication cancelled by user
 	// - temporary server error
 	// - unavailable SPID level
-
-	// In case of SSO failure, display an error page.
-	if err != nil {
-		fmt.Printf("Bad Response received: %s\n", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
 
 	// Log response as required by the SPID rules.
 	// Hint: log it in a way that does not mangle whitespace preventing signature from
@@ -260,12 +263,15 @@ func spidSLO(w http.ResponseWriter, r *http.Request) {
 		// This is the response to a SP-initiated logout.
 
 		// Parse the response and catch validation errors.
-		_, err := sp.ParseLogoutResponse(
-			r,
-			logoutReqID, // Match the ID of our logout request for increased security.
-		)
+		response, err := sp.ParseLogoutResponse(r)
+		if err != nil {
+			fmt.Printf("Bad LogoutResponse received: %s\n", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-		// In case of SLO failure, display an error page.
+		// Validate the response, matching the ID of our request
+		err = response.Validate(r, logoutReqID)
 		if err != nil {
 			fmt.Printf("Bad LogoutResponse received: %s\n", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
