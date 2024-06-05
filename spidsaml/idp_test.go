@@ -5,7 +5,7 @@ import (
 )
 
 func TestNewIDPFromXML(t *testing.T) {
-	idp := NewIDPFromXML([]byte(`<?xml version='1.0' encoding='UTF-8'?>
+	idps, _ := ParseIDPsFromXML([]byte(`<?xml version='1.0' encoding='UTF-8'?>
 	<EntityDescriptor xmlns:ns0="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ns1="http://www.w3.org/2000/09/xmldsig#" entityID="http://localhost:8088"><ns0:IDPSSODescriptor WantAuthnRequestsSigned="false" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"><ns0:KeyDescriptor use="signing"><ns1:KeyInfo><ns1:X509Data><ns1:X509Certificate>MIICtDCCAZwCCQDQQ+FCxgMN6jANBgkqhkiG9w0BAQsFADAcMQswCQYDVQQGEwJJ
 	VDENMAsGA1UEBwwEUm9tYTAeFw0xODA2MjYxMDM5MzBaFw0xOTA2MjYxMDM5MzBa
 	MBwxCzAJBgNVBAYTAklUMQ0wCwYDVQQHDARSb21hMIIBIjANBgkqhkiG9w0BAQEF
@@ -23,13 +23,13 @@ func TestNewIDPFromXML(t *testing.T) {
 	xTPK7hTz4p1D3uXfKT/o1qiql2PAjfl8
 	</ns1:X509Certificate></ns1:X509Data></ns1:KeyInfo></ns0:KeyDescriptor><ns0:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="http://localhost:8088/slo" /><ns0:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="http://localhost:8088/slo" /><ns0:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:transient</ns0:NameIDFormat><ns0:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="http://localhost:8088/sso" /><ns0:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="http://localhost:8088/sso" /></ns0:IDPSSODescriptor><ns0:Organization><ns0:OrganizationName xml:lang="en">Spid testenv</ns0:OrganizationName><ns0:OrganizationDisplayName xml:lang="en">Spid testenv</ns0:OrganizationDisplayName><ns0:OrganizationURL xml:lang="en">http://www.example.com</ns0:OrganizationURL></ns0:Organization><ns0:ContactPerson contactType="technical"><ns0:GivenName>support</ns0:GivenName><ns0:SurName>support</ns0:SurName><ns0:EmailAddress>technical@example.com</ns0:EmailAddress></ns0:ContactPerson></EntityDescriptor>`))
 
-	if idp.EntityID != "http://localhost:8088" {
+	if idps[0].EntityID != "http://localhost:8088" {
 		t.Error("Failed to parse entityID")
 	}
-	if idp.SSOURLs[HTTPPost] != "http://localhost:8088/sso" {
+	if idps[0].SSOURLs[HTTPPost] != "http://localhost:8088/sso" {
 		t.Error("Failed to parse SingleSignOnService")
 	}
-	if idp.SLOReqURLs[HTTPPost] != "http://localhost:8088/slo" {
+	if idps[0].SLOReqURLs[HTTPPost] != "http://localhost:8088/slo" {
 		t.Error("Failed to parse SingleLogoutService")
 	}
 }

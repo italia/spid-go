@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -24,73 +23,85 @@ type IDP struct {
 	SLOResURLs map[SAMLBinding]string
 }
 
-// NewIDPFromXML takes XML metadata and returns an IDP object.
-func NewIDPFromXML(xml []byte) *IDP {
+// ParseIDPsFromXML takes XML metadata and returns an IDP object.
+func ParseIDPsFromXML(xml []byte) ([]*IDP, error) {
 	doc := etree.NewDocument()
-	if err := doc.ReadFromBytes(xml); err != nil {
-		panic(err)
+	err := doc.ReadFromBytes(xml)
+	if err != nil {
+		return nil, err
 	}
 
-	// TODO: if metadata is signed, validate /md:EntityDescriptor/dsig:Signature
-	// against a known CA
+	var idps []*IDP
 
-	idp := new(IDP)
-	idp.EntityID = doc.FindElement("/EntityDescriptor").SelectAttr("entityID").Value
+	for _, idpEl := range doc.FindElements("//EntityDescriptor") {
+		idp := new(IDP)
+		idp.EntityID = idpEl.SelectAttr("entityID").Value
 
-	// SingleSignOnService
-	idp.SSOURLs = make(map[SAMLBinding]string)
-	for _, e := range doc.FindElements("/EntityDescriptor/IDPSSODescriptor/SingleSignOnService") {
-		idp.SSOURLs[SAMLBinding(e.SelectAttr("Binding").Value)] = e.SelectAttr("Location").Value
-	}
+		// TODO: if metadata is signed, validate /md:EntityDescriptor/dsig:Signature
+		// against a known CA
 
-	// SingleLogoutService
-	idp.SLOReqURLs = make(map[SAMLBinding]string)
-	idp.SLOResURLs = make(map[SAMLBinding]string)
-	for _, e := range doc.FindElements("/EntityDescriptor/IDPSSODescriptor/SingleLogoutService") {
-		binding := SAMLBinding(e.SelectAttr("Binding").Value)
-		idp.SLOReqURLs[binding] = e.SelectAttr("Location").Value
-		resloc := e.SelectAttr("ResponseLocation")
-		if resloc != nil {
-			idp.SLOResURLs[binding] = resloc.Value
-		} else {
-			idp.SLOResURLs[binding] = e.SelectAttr("Location").Value
+		// SingleSignOnService
+		idp.SSOURLs = make(map[SAMLBinding]string)
+		for _, e := range doc.FindElements("/EntityDescriptor/IDPSSODescriptor/SingleSignOnService") {
+			idp.SSOURLs[SAMLBinding(e.SelectAttr("Binding").Value)] = e.SelectAttr("Location").Value
 		}
-	}
 
-	// certificate
-	certs := doc.FindElements("/EntityDescriptor/IDPSSODescriptor/KeyDescriptor[@use='signing']/KeyInfo/X509Data/X509Certificate")
-	nrOfCertificates := len(certs)
-	if nrOfCertificates == 0 {
-		panic(fmt.Sprintf("Could not read certificate for IdP with entityID: %v\n", idp.EntityID))
-	}
-
-	idp.Certs = make([]*x509.Certificate, nrOfCertificates)
-
-	for i, cert := range certs  {
-		// remove whitespace
-		certText := cert.Text()
-		certText = strings.Replace(certText, " ", "", -1)
-		certText = strings.Replace(certText, "\n", "", -1)
-		certText = strings.Replace(certText, "\t", "", -1)
-
-		data, err := base64.StdEncoding.DecodeString(certText)
-		if err != nil {
-			panic(fmt.Sprintf("failed to decode base64 certificate: %s", err))
+		// SingleLogoutService
+		idp.SLOReqURLs = make(map[SAMLBinding]string)
+		idp.SLOResURLs = make(map[SAMLBinding]string)
+		for _, e := range doc.FindElements("/EntityDescriptor/IDPSSODescriptor/SingleLogoutService") {
+			binding := SAMLBinding(e.SelectAttr("Binding").Value)
+			idp.SLOReqURLs[binding] = e.SelectAttr("Location").Value
+			resloc := e.SelectAttr("ResponseLocation")
+			if resloc != nil {
+				idp.SLOResURLs[binding] = resloc.Value
+			} else {
+				idp.SLOResURLs[binding] = e.SelectAttr("Location").Value
+			}
 		}
-		idp.Certs[i], err = x509.ParseCertificate(data)
-		if err != nil {
-			panic("failed to parse certificate: " + err.Error())
+
+		// certificate
+		certs := doc.FindElements("/EntityDescriptor/IDPSSODescriptor/KeyDescriptor[@use='signing']/KeyInfo/X509Data/X509Certificate")
+		nrOfCertificates := len(certs)
+		if nrOfCertificates == 0 {
+			return nil, fmt.Errorf("could not read certificate for IdP with entityID: %v", idp.EntityID)
 		}
+
+		idp.Certs = make([]*x509.Certificate, nrOfCertificates)
+
+		for i, cert := range certs {
+			// remove whitespace
+			certText := cert.Text()
+			certText = strings.Replace(certText, " ", "", -1)
+			certText = strings.Replace(certText, "\n", "", -1)
+			certText = strings.Replace(certText, "\t", "", -1)
+
+			data, err := base64.StdEncoding.DecodeString(certText)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode base64 certificate: %w", err)
+			}
+			idp.Certs[i], err = x509.ParseCertificate(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse certificate: %w", err)
+			}
+		}
+
+		idps = append(idps, idp)
 	}
 
-	return idp
+	return idps, nil
 }
 
 // LoadIDPFromXMLFile loads an Identity Provider from its XML metadata.
 func (sp *SP) LoadIDPFromXMLFile(path string) error {
+	// read the XML file
+	byteValue, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
 
-	idp, err := LoadIDPFrom(path)
-
+	// load the IdP(s) contained in the XML file
+	idps, err := ParseIDPsFromXML(byteValue)
 	if err != nil {
 		return nil
 	}
@@ -99,29 +110,11 @@ func (sp *SP) LoadIDPFromXMLFile(path string) error {
 	if sp.IDP == nil {
 		sp.IDP = make(map[string]*IDP)
 	}
-	sp.IDP[idp.EntityID] = idp
+	for _, idp := range idps {
+		sp.IDP[idp.EntityID] = idp
+	}
 
 	return nil
-}
-
-func LoadIDPFrom(path string) (*IDP, error) {
-	// open XML file
-	xmlFile, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer xmlFile.Close()
-
-	// read our opened xmlFile as a byte array.
-	byteValue, err := ioutil.ReadAll(xmlFile)
-	if err != nil {
-		return nil, err
-	}
-
-	// load the IdP
-	idp := NewIDPFromXML(byteValue)
-
-	return idp, nil
 }
 
 // LoadIDPMetadata load one or multiple Identity Providers by reading all the XML files in the given directory.
