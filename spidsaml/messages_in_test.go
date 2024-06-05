@@ -31,7 +31,7 @@ func TestInMessage_validateSignatureForPost(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			sp := createSPForTes()
-			sp.LoadIDPFromXMLFile("../sample_data/test_idp/testenv2_metadata.xml")
+			sp.LoadIDPsFromXMLFile("../sample_data/test_idp/testenv2_metadata.xml")
 			msg := inMessage{
 				protocolMessage: protocolMessage{
 					SP:    sp,

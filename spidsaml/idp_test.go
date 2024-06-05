@@ -67,7 +67,7 @@ func TestSP_LoadIDPMetadata(t *testing.T) {
 func TestSP_AnIDPCanHaveMultipleCertificates(t *testing.T) {
 	sp := &SP{}
 
-	if err := sp.LoadIDPFromXMLFile("../sample_data/idp_metadata/aruba.xml"); err != nil {
+	if err := sp.LoadIDPsFromXMLFile("../sample_data/idp_metadata/aruba.xml"); err != nil {
 		t.Error(err)
 	}
 

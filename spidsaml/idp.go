@@ -42,14 +42,14 @@ func ParseIDPsFromXML(xml []byte) ([]*IDP, error) {
 
 		// SingleSignOnService
 		idp.SSOURLs = make(map[SAMLBinding]string)
-		for _, e := range idpEl.FindElements("/IDPSSODescriptor/SingleSignOnService") {
+		for _, e := range idpEl.FindElements("./IDPSSODescriptor/SingleSignOnService") {
 			idp.SSOURLs[SAMLBinding(e.SelectAttr("Binding").Value)] = e.SelectAttr("Location").Value
 		}
 
 		// SingleLogoutService
 		idp.SLOReqURLs = make(map[SAMLBinding]string)
 		idp.SLOResURLs = make(map[SAMLBinding]string)
-		for _, e := range idpEl.FindElements("/IDPSSODescriptor/SingleLogoutService") {
+		for _, e := range idpEl.FindElements("./IDPSSODescriptor/SingleLogoutService") {
 			binding := SAMLBinding(e.SelectAttr("Binding").Value)
 			idp.SLOReqURLs[binding] = e.SelectAttr("Location").Value
 			resloc := e.SelectAttr("ResponseLocation")
@@ -61,7 +61,7 @@ func ParseIDPsFromXML(xml []byte) ([]*IDP, error) {
 		}
 
 		// certificate
-		certs := idpEl.FindElements("/IDPSSODescriptor/KeyDescriptor[@use='signing']/KeyInfo/X509Data/X509Certificate")
+		certs := idpEl.FindElements("./IDPSSODescriptor/KeyDescriptor[@use='signing']/KeyInfo/X509Data/X509Certificate")
 		nrOfCertificates := len(certs)
 		if nrOfCertificates == 0 {
 			return nil, fmt.Errorf("could not read certificate for IdP with entityID: %v", idp.EntityID)
@@ -78,11 +78,11 @@ func ParseIDPsFromXML(xml []byte) ([]*IDP, error) {
 
 			data, err := base64.StdEncoding.DecodeString(certText)
 			if err != nil {
-				return nil, fmt.Errorf("failed to decode base64 certificate: %w", err)
+				return nil, fmt.Errorf("failed to decode base64 certificate for IdP with entityID %s: %w", idp.EntityID, err)
 			}
 			idp.Certs[i], err = x509.ParseCertificate(data)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse certificate: %w", err)
+				return nil, fmt.Errorf("failed to parse certificate for IdP with entityID %s: %w", idp.EntityID, err)
 			}
 		}
 
@@ -92,8 +92,8 @@ func ParseIDPsFromXML(xml []byte) ([]*IDP, error) {
 	return idps, nil
 }
 
-// LoadIDPFromXMLFile loads an Identity Provider from its XML metadata.
-func (sp *SP) LoadIDPFromXMLFile(path string) error {
+// LoadIDPsFromXMLFile loads an Identity Provider from its XML metadata.
+func (sp *SP) LoadIDPsFromXMLFile(path string) error {
 	// read the XML file
 	byteValue, err := os.ReadFile(path)
 	if err != nil {
@@ -103,7 +103,7 @@ func (sp *SP) LoadIDPFromXMLFile(path string) error {
 	// load the IdP(s) contained in the XML file
 	idps, err := ParseIDPsFromXML(byteValue)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	// store the loaded IdP
@@ -125,7 +125,7 @@ func (sp *SP) LoadIDPMetadata(dir string) error {
 	}
 
 	for _, file := range files {
-		err := sp.LoadIDPFromXMLFile(file)
+		err := sp.LoadIDPsFromXMLFile(file)
 		if err != nil {
 			return err
 		}
