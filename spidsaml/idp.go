@@ -42,14 +42,14 @@ func ParseIDPsFromXML(xml []byte) ([]*IDP, error) {
 
 		// SingleSignOnService
 		idp.SSOURLs = make(map[SAMLBinding]string)
-		for _, e := range doc.FindElements("/EntityDescriptor/IDPSSODescriptor/SingleSignOnService") {
+		for _, e := range idpEl.FindElements("/IDPSSODescriptor/SingleSignOnService") {
 			idp.SSOURLs[SAMLBinding(e.SelectAttr("Binding").Value)] = e.SelectAttr("Location").Value
 		}
 
 		// SingleLogoutService
 		idp.SLOReqURLs = make(map[SAMLBinding]string)
 		idp.SLOResURLs = make(map[SAMLBinding]string)
-		for _, e := range doc.FindElements("/EntityDescriptor/IDPSSODescriptor/SingleLogoutService") {
+		for _, e := range idpEl.FindElements("/IDPSSODescriptor/SingleLogoutService") {
 			binding := SAMLBinding(e.SelectAttr("Binding").Value)
 			idp.SLOReqURLs[binding] = e.SelectAttr("Location").Value
 			resloc := e.SelectAttr("ResponseLocation")
@@ -61,7 +61,7 @@ func ParseIDPsFromXML(xml []byte) ([]*IDP, error) {
 		}
 
 		// certificate
-		certs := doc.FindElements("/EntityDescriptor/IDPSSODescriptor/KeyDescriptor[@use='signing']/KeyInfo/X509Data/X509Certificate")
+		certs := idpEl.FindElements("/IDPSSODescriptor/KeyDescriptor[@use='signing']/KeyInfo/X509Data/X509Certificate")
 		nrOfCertificates := len(certs)
 		if nrOfCertificates == 0 {
 			return nil, fmt.Errorf("could not read certificate for IdP with entityID: %v", idp.EntityID)
