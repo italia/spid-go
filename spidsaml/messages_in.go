@@ -155,7 +155,7 @@ func (msg *inMessage) validateSignatureForGet(param string, query url.Values) er
 
 func (msg *inMessage) validateSignatureForPost(el *etree.Element) error {
 	// Check presence of signature
-	sigEl := msg.doc.FindElement("//ds:Signature")
+	sigEl := msg.doc.FindElement("//Signature[namespace-uri()='http://www.w3.org/2000/09/xmldsig#']")
 	if sigEl == nil {
 		return errors.New("signature element not found")
 	}
