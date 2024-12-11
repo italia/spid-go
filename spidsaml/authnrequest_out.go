@@ -63,7 +63,7 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 	AttributeConsumingServiceIndex="{{ .AttrIndex }}"
 	{{ end }}
 
-	ForceAuthn="{{ if gt .Level 1 }}true{{ else }}false{{ end }}">
+	{{ if gt .Level 1 }}ForceAuthn="true"{{ end }}>
 	
 	<saml:Issuer
         NameQualifier="{{ .SP.EntityID }}"
