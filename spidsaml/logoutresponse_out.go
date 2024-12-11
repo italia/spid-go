@@ -43,7 +43,8 @@ func (logoutres *LogoutResponseOut) XML(binding SAMLBinding) []byte {
 		IssueInstant string
 	}{
 		logoutres,
-		logoutres.IDP.SLOResURLs[binding],
+		//logoutres.IDP.SLOResURLs[binding],  // This would be the SAML standard
+		logoutres.SP.EntityID, // This is the SPID spec
 		logoutres.IssueInstantString(),
 	}
 

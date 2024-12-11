@@ -39,7 +39,8 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 		IssueInstant string
 	}{
 		authnreq,
-		authnreq.IDP.SSOURLs[binding],
+		//authnreq.IDP.SSOURLs[binding],  // This would be the SAML standard
+		authnreq.SP.EntityID, // This is the SPID spec
 		authnreq.IssueInstantString(),
 	}
 
