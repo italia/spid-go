@@ -87,7 +87,7 @@ func (logoutres *LogoutResponseOut) XML(binding SAMLBinding) []byte {
 			</samlp:StatusCode>
 		{{ end }}
 	</samlp:Status>
-</samlp:LogoutRequest>
+</samlp:LogoutResponse>
 `
 
 	t := template.Must(template.New("req").Parse(tmpl))

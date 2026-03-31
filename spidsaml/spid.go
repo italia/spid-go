@@ -7,9 +7,10 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"github.com/beevik/etree"
 	"io/ioutil"
 	"text/template"
+
+	"github.com/beevik/etree"
 
 	"github.com/ma314smith/signedxml"
 )
@@ -211,12 +212,12 @@ func (sp *SP) Metadata(enableSigning bool) string {
         <md:AssertionConsumerService
             Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
             Location="{{ $url }}"
-            index="{{ $index }}"
-            isDefault="{{ if gt $index 0 }}false{{ else }}true{{ end }}" />
+            index="{{ add $index 1 }}"
+            isDefault="{{ if eq $index 0 }}true{{ else }}false{{ end }}" />
         {{ end }}
 
         {{ range $index, $attcs := .AttributeConsumingServices }}
-        <md:AttributeConsumingService index="{{ $index }}">
+        <md:AttributeConsumingService index="{{ add $index 1 }}" isDefault="{{ if eq $index 0 }}true{{ else }}false{{ end }}">
             <md:ServiceName xml:lang="it">{{ $attcs.ServiceName }}</md:ServiceName>
             {{ range $attr := $attcs.Attributes }}
             <md:RequestedAttribute Name="{{ $attr }}" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
