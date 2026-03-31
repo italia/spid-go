@@ -249,7 +249,13 @@ func (sp *SP) Metadata(enableSigning bool) string {
 		enableSigning,
 	}
 
-	t := template.Must(template.New("metadata").Parse(tmpl))
+	t := template.Must(
+		template.New("metadata").
+			Funcs(template.FuncMap{
+				"add": func(a, b int) int { return a + b },
+			}).
+			Parse(tmpl),
+	)
 	var metadata bytes.Buffer
 
 	// Parse now the template
