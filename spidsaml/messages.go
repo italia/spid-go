@@ -11,13 +11,14 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/ma314smith/signedxml"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/ma314smith/signedxml"
 
 	"github.com/beevik/etree"
 	"github.com/crewjam/go-xmlsec"

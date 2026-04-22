@@ -2,6 +2,7 @@ package spidsaml
 
 import (
 	"bytes"
+	"strconv"
 	"text/template"
 )
 
@@ -14,6 +15,7 @@ type AuthnRequest struct {
 	AttrIndex  int
 	Level      int
 	Comparison string
+	UseMyID    bool
 }
 
 // NewAuthnRequest generates an AuthnRequest addressed to this Identity Provider.
@@ -93,13 +95,44 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 	return metadata.Bytes()
 }
 
+// XMLMyID generates the XML representation of this AuthnRequest using
+// MyID-compatible AuthnContextClassRef values based on Level.
+func (authnreq *AuthnRequest) XMLMyID(binding SAMLBinding) []byte {
+	xml := authnreq.XML(binding)
+	if xml == nil {
+		return nil
+	}
+
+	var authnContextClassRef string
+	switch authnreq.Level {
+	case 1:
+		authnContextClassRef = "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport"
+	case 2:
+		authnContextClassRef = "urn:oasis:names:tc:SAML:2.0:ac:classes:SecureRemotePassword"
+	case 3:
+		authnContextClassRef = "urn:oasis:names:tc:SAML:2.0:ac:classes:Smartcard"
+	default:
+		return xml
+	}
+
+	spidClassRef := "https://www.spid.gov.it/SpidL" + strconv.Itoa(authnreq.Level)
+	return bytes.Replace(xml, []byte(spidClassRef), []byte(authnContextClassRef), 1)
+}
+
+func (authnreq *AuthnRequest) xmlForBinding(binding SAMLBinding) []byte {
+	if authnreq.UseMyID {
+		return authnreq.XMLMyID(binding)
+	}
+	return authnreq.XML(binding)
+}
+
 // RedirectURL returns the full URL of the Identity Provider where user should be
 // redirected in order to initiate their Single Sign-On. In SAML words, this
 // implements the HTTP-Redirect binding.
 func (authnreq *AuthnRequest) RedirectURL() string {
 	return authnreq.outMessage.RedirectURL(
 		authnreq.IDP.SSOURLs[HTTPRedirect],
-		authnreq.XML(HTTPRedirect),
+		authnreq.xmlForBinding(HTTPRedirect),
 		"SAMLRequest",
 	)
 }
@@ -110,7 +143,7 @@ func (authnreq *AuthnRequest) RedirectURL() string {
 func (authnreq *AuthnRequest) PostForm() []byte {
 	return authnreq.outMessage.PostForm(
 		authnreq.IDP.SSOURLs[HTTPPost],
-		authnreq.XML(HTTPPost),
+		authnreq.xmlForBinding(HTTPPost),
 		"SAMLRequest",
 	)
 }
