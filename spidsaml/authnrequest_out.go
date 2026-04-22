@@ -15,7 +15,7 @@ type AuthnRequest struct {
 	AttrIndex  int
 	Level      int
 	Comparison string
-	UseMyID    bool
+	UseSamlMapping bool
 }
 
 // NewAuthnRequest generates an AuthnRequest addressed to this Identity Provider.
@@ -95,9 +95,9 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 	return metadata.Bytes()
 }
 
-// XMLMyID generates the XML representation of this AuthnRequest using
-// MyID-compatible AuthnContextClassRef values based on Level.
-func (authnreq *AuthnRequest) XMLMyID(binding SAMLBinding) []byte {
+// XMLSamlMapping generates the XML representation of this AuthnRequest using
+// SAML AuthnContextClassRef mapping values based on Level.
+func (authnreq *AuthnRequest) XMLSamlMapping(binding SAMLBinding) []byte {
 	xml := authnreq.XML(binding)
 	if xml == nil {
 		return nil
@@ -120,8 +120,8 @@ func (authnreq *AuthnRequest) XMLMyID(binding SAMLBinding) []byte {
 }
 
 func (authnreq *AuthnRequest) xmlForBinding(binding SAMLBinding) []byte {
-	if authnreq.UseMyID {
-		return authnreq.XMLMyID(binding)
+	if authnreq.UseSamlMapping {
+		return authnreq.XMLSamlMapping(binding)
 	}
 	return authnreq.XML(binding)
 }
