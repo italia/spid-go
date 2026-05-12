@@ -119,6 +119,17 @@ func (sp *SP) LoadIDPsFromXMLFile(path string) error {
 
 // LoadIDPMetadata load one or multiple Identity Providers by reading all the XML files in the given directory.
 func (sp *SP) LoadIDPMetadata(dir string) error {
+	// Check whether directory exists
+	{
+		info, err := os.Stat(dir)
+		if err != nil {
+			return fmt.Errorf("SPID metadata directory does not exist: %v\n", err)
+		}
+		if !info.IsDir() {
+			return fmt.Errorf("SPID metadata directory does not exist\n")
+		}
+	}
+
 	files, err := filepath.Glob(dir + "/*.xml")
 	if err != nil {
 		log.Fatal(err)
